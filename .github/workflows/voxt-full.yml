@@ -1,0 +1,91 @@
+name: voxt-full
+description: Cross-compilation workflow triggered on pushes and pull-requests to the 'main' branch
+run-name: ${{ github.actor }} is running ${{ github.workflow }}
+
+on:
+    push:
+        branches: [ "main" ]
+    pull_request:
+        branches: [ "main" ]
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    build-native:
+        name: Build Native (${{ matrix.target }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                      target: x86_64-unknown-linux-gnu
+                      BUILD_TARGET: [release-native]
+                    - os: macos-latest
+                      target: aarch64-apple-darwin
+                      BUILD_TARGET: [release-native]
+                    - os: windows-latest
+                      target: x86_64-pc-windows-msvc
+                      BUILD_TARGET: [release-native]
+
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v4
+
+          - name: Install Rust toolchain
+            uses: dtolnay/rust-toolchain@stable
+            with:
+              targets: ${{ matrix.target }}
+
+          - name: Rust Cache
+            uses: Swatinem/rust-cache@v2
+            with:
+              key: ${{ matrix.target }}
+
+          - name: Build workspace (${{matrix.target}})
+            run: cargo build --workspace --target ${{ matrix.target }} --profile ${{ matrix.BUILD_TARGET }}
+
+          - name: Run tests (${{matrix.target}})
+            run: cargo test --workspace --target ${{ matrix.target }} --profile ${{ matrix.BUILD_TARGET }}
+#
+#    build-wasm:
+#        name: Build Wasm (wasm32-unknown-unknown)
+#        runs-on: ubuntu-latest
+#        steps:
+#            - name: Checkout repository
+#              uses: actions/checkout@v4
+#
+#            - name: Install Rust toolchain
+#              uses: dtolnay/rust-toolchain@stable
+#              with:
+#                targets: wasm32-unknown-unknown
+#
+#            - name: Rust Cache
+#              uses: Swatinem/rust-cache@v2
+#              with:
+#                key: wasm32-unknown-unknown
+#
+#            - name: Build workspace (wasm32-unknown-unknown)
+#              run: cargo build --workspace --target wasm32-unknown-unknown --profile release-wasm
+#
+    lints:
+      name: Format and Lint
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Install Rust toolchain
+          uses: dtolnay/rust-toolchain@stable
+          with:
+            components: rustfmt, clippy
+
+        - name: Rust Cache
+          uses: Swatinem/rust-cache@v2
+
+        - name: Check formatting
+          run: cargo fmt --all -- --check
+
+        - name: Run Clippy
+          run: cargo clippy --workspace --all-targets --all-features -- -D warnings

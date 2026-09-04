@@ -1,0 +1,15 @@
+[package]
+name = "voxt-engine"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+documentation.workspace = true
+description.workspace = true
+readme.workspace = true
+license.workspace = true
+keywords.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
