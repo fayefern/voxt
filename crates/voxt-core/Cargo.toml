@@ -1,0 +1,25 @@
+[package]
+name = "voxt-core"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+documentation.workspace = true
+description.workspace = true
+readme.workspace = true
+license.workspace = true
+keywords.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+include = [
+    "/Cargo.toml",
+    "/src/**/*.rs",
+    "examples/**/*.rs",
+    "/benches/**/*.rs",
+    "/tests/**/*.rs",
+    "/LICENSE-APACHE",
+    "/LICENSE-MIT",
+    "/README.md",
+]
+
+[dependencies]

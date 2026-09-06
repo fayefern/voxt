@@ -1,0 +1,10 @@
+[alias]
+b = "build"
+c = "check"
+d = ["doc", "--no-deps", "--open"]
+t = "test"
+r = "run"
+rr = "run --release"
+
+c-dev = ["clippy", "--all-features", "--all-targets", "--", "-D", "warnings", "-D", "clippy::pedantic"]
+c-fix = ["clippy", "--all-features", "--all-targets", "--fix", "--", "-D", "warnings", "-D", "clippy::pedantic"]
