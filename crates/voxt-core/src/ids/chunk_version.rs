@@ -31,3 +31,51 @@ impl ChunkVersion {
         self.0 += 1;
     }
 }
+
+/// UNIT TESTS
+
+#[test]
+fn default_version_is_zero() {
+    assert_eq!(ChunkVersion::default().as_u64(), 0);
+}
+
+#[test]
+fn new_preserves_version() {
+    assert_eq!(ChunkVersion::new(37).as_u64(), 37);
+}
+
+#[test]
+fn next_does_not_mutate() {
+    let version = ChunkVersion::new(10);
+
+    assert_eq!(version.next().as_u64(), 11);
+    assert_eq!(version.as_u64(), 10);
+}
+
+#[test]
+fn increment_mutates() {
+    let mut version = ChunkVersion::new(10);
+
+    version.increment();
+
+    assert_eq!(version.as_u64(), 11);
+}
+
+#[test]
+fn versions_are_ordered() {
+    assert!(ChunkVersion::new(10) < ChunkVersion::new(11));
+}
+
+#[test]
+fn repeated_increment_advances_one_at_a_time() {
+    let mut version = ChunkVersion::default();
+
+    version.increment();
+    assert_eq!(version.as_u64(), 1);
+
+    version.increment();
+    assert_eq!(version.as_u64(), 2);
+
+    version.increment();
+    assert_eq!(version.as_u64(), 3);
+}

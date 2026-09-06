@@ -1,1 +1,1 @@
-use voxt_core::{BlockId, ChunkPos, ChunkVersion};
+use voxt_core::prelude::{BlockId, ChunkPos, ChunkVersion};

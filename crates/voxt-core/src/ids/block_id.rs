@@ -23,3 +23,24 @@ impl BlockId {
         self.0 == 0
     }
 }
+
+/// UNIT TESTS
+
+#[test]
+fn new_preserves_id() {
+    let id = BlockId::new(42);
+    assert_eq!(id.id(), 42);
+}
+
+#[test]
+fn zero_is_air() {
+    assert!(BlockId::new(0).is_air());
+    assert!(!BlockId::new(1).is_air())
+}
+
+#[test]
+fn maximum_id_is_valid() {
+    let id = BlockId::new(u16::MAX);
+    assert_eq!(id.id(), u16::MAX);
+    assert!(!id.is_air());
+}

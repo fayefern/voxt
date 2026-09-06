@@ -1,9 +1,13 @@
+pub(crate) mod config;
 pub(crate) mod ids;
-pub(crate) mod position;
-pub(crate) mod util;
+pub(crate) mod pos;
 
-pub use {
-    ids::{block_id::BlockId, chunk_version::ChunkVersion},
-    position::{chunk_pos::ChunkPos, voxel_pos::VoxelPos, world_pos::WorldPos},
-    util::CHUNK_SIZE,
-};
+pub mod prelude {
+    pub mod constants {
+        pub use crate::config::{CHUNK_SIZE_I32, CHUNK_SIZE_U8, CHUNK_SIZE_USZ};
+    }
+    pub use crate::{
+        ids::{block_id::BlockId, chunk_version::ChunkVersion},
+        pos::{ChunkPos, VoxelPos, WorldPos},
+    };
+}
