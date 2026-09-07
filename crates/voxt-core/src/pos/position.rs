@@ -1,8 +1,12 @@
-use std::{fmt::Display, marker::PhantomData};
+use std::{
+    fmt::Display,
+    marker::PhantomData,
+    ops::{Add, Sub},
+};
 
 use thiserror::Error;
 
-use crate::config::{CHUNK_SIZE_I32, CHUNK_SIZE_U8, WORLD_NEG_I32, WORLD_POS_I32};
+use crate::prelude::constants::{CHUNK_SIZE_I32, CHUNK_SIZE_U8, WORLD_NEG_I32, WORLD_POS_I32};
 
 /// PhantomData, indicates a `Pos` in the World Grid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -121,6 +125,14 @@ impl<T: Display, Space> Display for Pos<T, Space> {
 pub type VoxelPos = Pos<u8, VoxelSpace>;
 
 impl VoxelPos {
+    /// The origin of the Voxel Grid.
+    pub const ZERO: Self = Self {
+        x: 0,
+        y: 0,
+        z: 0,
+        _space: PhantomData,
+    };
+
     /// The maximum valid value for a coordinate in a `VoxelPos`.
     pub const MAX_VALID: u8 = CHUNK_SIZE_U8 - 1;
 
@@ -248,12 +260,70 @@ impl TryFrom<[u8; 3]> for VoxelPos {
     }
 }
 
+impl Add for VoxelPos {
+    type Output = Self;
+
+    /// Performs the operation.
+    ///
+    /// # Panics
+    ///
+    /// If the resulting value would overflow/underflow, the operation will panic.
+    fn add(self, rhs: Self) -> Self::Output {
+        let x = self.x.checked_add(rhs.x);
+        let y = self.y.checked_add(rhs.y);
+        let z = self.z.checked_add(rhs.z);
+
+        match (x, y, z) {
+            (Some(x), Some(y), Some(z)) => Self {
+                x,
+                y,
+                z,
+                _space: PhantomData,
+            },
+            _ => panic!("invalid ChunkPos ({:?}, {:?}, {:?})", x, y, z),
+        }
+    }
+}
+
+impl Sub for VoxelPos {
+    type Output = Self;
+
+    /// Performs the operation.
+    ///
+    /// # Panics
+    ///
+    /// If the resulting value would overflow/underflow, the operation will panic.
+    fn sub(self, rhs: Self) -> Self::Output {
+        let x = self.x.checked_sub(rhs.x);
+        let y = self.y.checked_sub(rhs.y);
+        let z = self.z.checked_sub(rhs.z);
+
+        match (x, y, z) {
+            (Some(x), Some(y), Some(z)) => Self {
+                x,
+                y,
+                z,
+                _space: PhantomData,
+            },
+            _ => panic!("invalid VoxelPos ({:?}, {:?}, {:?})", x, y, z),
+        }
+    }
+}
+
 /// Represents the position of a Chunk in the World Grid.
 ///
 /// The `ChunkPos` is a 3D coordinate system where each coordinate is an i32.
 pub type ChunkPos = Pos<i32, ChunkSpace>;
 
 impl ChunkPos {
+    /// The origin of the Chunk Grid.
+    pub const ZERO: Self = Self {
+        x: 0,
+        y: 0,
+        z: 0,
+        _space: PhantomData,
+    };
+
     /// Maximum coordinate value for a valid `ChunkPos`.
     const MAX_VALID: i32 = WORLD_POS_I32 / CHUNK_SIZE_I32;
 
@@ -387,12 +457,76 @@ impl TryFrom<[i32; 3]> for ChunkPos {
     }
 }
 
+impl Add for ChunkPos {
+    type Output = Self;
+
+    /// Performs the operation.
+    ///
+    /// # Panics
+    ///
+    /// If the resulting value would overflow/underflow, the operation will panic.
+    fn add(self, rhs: Self) -> Self::Output {
+        let x = self.x.checked_add(rhs.x);
+        let y = self.y.checked_add(rhs.y);
+        let z = self.z.checked_add(rhs.z);
+
+        match (x, y, z) {
+            (Some(x), Some(y), Some(z)) => Self {
+                x,
+                y,
+                z,
+                _space: PhantomData,
+            },
+            _ => panic!("invalid ChunkPos ({:?}, {:?}, {:?})", x, y, z),
+        }
+    }
+}
+
+impl Sub for ChunkPos {
+    type Output = Self;
+
+    /// Performs the operation.
+    ///
+    /// # Panics
+    ///
+    /// If the resulting value would overflow/underflow, the operation will panic.
+    fn sub(self, rhs: Self) -> Self::Output {
+        let x = self.x.checked_sub(rhs.x);
+        let y = self.y.checked_sub(rhs.y);
+        let z = self.z.checked_sub(rhs.z);
+
+        match (x, y, z) {
+            (Some(x), Some(y), Some(z)) => Self {
+                x,
+                y,
+                z,
+                _space: PhantomData,
+            },
+            _ => panic!("invalid ChunkPos ({:?}, {:?}, {:?})", x, y, z),
+        }
+    }
+}
+
 /// Represents the position of a Voxel in the Global Grid.
 ///
 /// The `WorldPos` is a 3D coordinate system where each coordinate is an i32.
 pub type WorldPos = Pos<i32, WorldSpace>;
 
 impl WorldPos {
+    /// The origin of the Voxel Grid.
+    pub const ZERO: Self = Self {
+        x: 0,
+        y: 0,
+        z: 0,
+        _space: PhantomData,
+    };
+
+    /// Maximum coordinate value for a valid `WorldPos`.
+    const _MAX_VALID: i32 = WORLD_POS_I32;
+
+    /// Minimum coordinate value for a valid 'WorldPos'
+    const _MIN_VALID: i32 = WORLD_NEG_I32;
+
     /// Creates a new `WorldPos` with the given coordinates.
     ///
     /// This is a convenience function, it behaves exactly like `new_unchecked`.
@@ -455,6 +589,56 @@ impl From<[i32; 3]> for WorldPos {
     }
 }
 
+impl Add for WorldPos {
+    type Output = Self;
+
+    /// Performs the operation.
+    ///
+    /// # Panics
+    ///
+    /// If the resulting value would overflow/underflow, the operation will panic.
+    fn add(self, rhs: Self) -> Self::Output {
+        let x = self.x.checked_add(rhs.x);
+        let y = self.y.checked_add(rhs.y);
+        let z = self.z.checked_add(rhs.z);
+
+        match (x, y, z) {
+            (Some(x), Some(y), Some(z)) => Self {
+                x,
+                y,
+                z,
+                _space: PhantomData,
+            },
+            _ => panic!("invalid WorldPosition"),
+        }
+    }
+}
+
+impl Sub for WorldPos {
+    type Output = Self;
+
+    /// Performs the operation.
+    ///
+    /// # Panics
+    ///
+    /// If the resulting value would overflow/underflow, the operation will panic.
+    fn sub(self, rhs: Self) -> Self::Output {
+        let x = self.x.checked_sub(rhs.x);
+        let y = self.y.checked_sub(rhs.y);
+        let z = self.z.checked_sub(rhs.z);
+
+        match (x, y, z) {
+            (Some(x), Some(y), Some(z)) => Self {
+                x,
+                y,
+                z,
+                _space: PhantomData,
+            },
+            _ => panic!("invalid WorldPosition"),
+        }
+    }
+}
+
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 /// Errors that can occur when working with positions. Mainly out of bounds.
 pub enum PosOutOfBounds {
@@ -464,245 +648,256 @@ pub enum PosOutOfBounds {
     ChunkPos(i32),
 }
 
-#[test]
-fn from_raw_preserves_coordinates() {
-    let pos = Pos::<i32, WorldSpace>::from_raw(1, -2, 3);
+#[cfg(test)]
+mod tests {
+    use crate::{
+        constants::CHUNK_SIZE_U8,
+        pos::{
+            ChunkPos, VoxelPos, WorldPos,
+            position::{Pos, WorldSpace},
+        },
+    };
 
-    assert_eq!(pos.all(), (1, -2, 3));
-    assert_eq!(pos.x(), 1);
-    assert_eq!(pos.y(), -2);
-    assert_eq!(pos.z(), 3);
-}
+    #[test]
+    fn from_raw_preserves_coordinates() {
+        let pos = Pos::<i32, WorldSpace>::from_raw(1, -2, 3);
 
-#[test]
-fn tuple_conversion_preserves_coordinates() {
-    let pos = Pos::<i32, WorldSpace>::from((1, 2, 3));
-
-    assert_eq!(pos.all(), (1, 2, 3));
-}
-
-#[test]
-fn array_conversion_preserves_coordinates() {
-    let pos = Pos::<i32, WorldSpace>::from([1, 2, 3]);
-
-    assert_eq!(pos.all(), (1, 2, 3));
-}
-
-#[test]
-fn converts_to_tuple() {
-    let pos = Pos::<i32, WorldSpace>::from_raw(1, 2, 3);
-
-    let tuple: (i32, i32, i32) = pos.into();
-
-    assert_eq!(tuple, (1, 2, 3));
-}
-
-#[test]
-fn converts_to_array() {
-    let pos = Pos::<i32, WorldSpace>::from_raw(1, 2, 3);
-
-    let array: [i32; 3] = pos.into();
-
-    assert_eq!(array, [1, 2, 3]);
-}
-
-fn takes_chunk_pos(_: ChunkPos) {}
-
-fn takes_world_voxel_pos(_: WorldPos) {}
-
-#[test]
-fn position_aliases_are_usable_as_distinct_types() {
-    let chunk = ChunkPos::from_raw(1, 2, 3);
-    let world = WorldPos::from_raw(1, 2, 3);
-
-    takes_chunk_pos(chunk);
-    takes_world_voxel_pos(world);
-}
-
-#[test]
-fn try_new_accepts_valid_bounds() {
-    assert!(VoxelPos::try_new(0, 0, 0).is_ok());
-    assert!(VoxelPos::try_new(31, 31, 31).is_ok());
-}
-
-#[test]
-fn try_new_accepts_interior_coordinates() {
-    let pos = VoxelPos::try_new(1, 2, 3).unwrap();
-
-    assert_eq!(pos.all(), (1, 2, 3));
-}
-
-#[test]
-fn try_new_rejects_invalid_x() {
-    assert!(VoxelPos::try_new(32, 0, 0).is_err());
-}
-
-#[test]
-fn try_new_rejects_invalid_y() {
-    assert!(VoxelPos::try_new(0, 32, 0).is_err());
-}
-
-#[test]
-fn try_new_rejects_invalid_z() {
-    assert!(VoxelPos::try_new(0, 0, 32).is_err());
-}
-
-#[test]
-fn try_new_rejects_invalid_coordinates() {
-    assert!(VoxelPos::try_new(32, 32, 32).is_err());
-}
-
-#[test]
-fn try_new_rejects_values_above_chunk_bounds() {
-    assert!(VoxelPos::try_new(u8::MAX, 0, 0).is_err());
-    assert!(VoxelPos::try_new(0, u8::MAX, 0).is_err());
-    assert!(VoxelPos::try_new(0, 0, u8::MAX).is_err());
-}
-
-#[test]
-fn from_raw_does_not_modify_coordinates() {
-    let pos = VoxelPos::from_raw(200, 201, 202);
-
-    assert_eq!(pos.all(), (200, 201, 202));
-}
-
-#[test]
-fn from_raw_checked_accepts_valid_coordinates() {
-    let pos = VoxelPos::from_raw_checked(31, 10, 0);
-
-    assert_eq!(pos.all(), (31, 10, 0));
-}
-
-#[test]
-#[should_panic]
-fn from_raw_checked_panics_on_invalid_x() {
-    let _ = VoxelPos::from_raw_checked(32, 0, 0);
-}
-
-#[test]
-#[should_panic]
-fn from_raw_checked_panics_on_invalid_y() {
-    let _ = VoxelPos::from_raw_checked(0, 32, 0);
-}
-
-#[test]
-#[should_panic]
-fn from_raw_checked_panics_on_invalid_z() {
-    let _ = VoxelPos::from_raw_checked(0, 0, 32);
-}
-
-#[test]
-fn world_origin_decomposes_correctly() {
-    let world = WorldPos::from_raw(0, 0, 0);
-
-    assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(0, 0, 0));
-    assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(0, 0, 0));
-}
-
-#[test]
-fn last_voxel_of_first_chunk_decomposes_correctly() {
-    let world = WorldPos::from_raw(31, 31, 31);
-
-    assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(0, 0, 0));
-    assert_eq!(
-        VoxelPos::from(world),
-        VoxelPos::from_raw_checked(31, 31, 31)
-    );
-}
-
-#[test]
-fn first_voxel_of_next_chunk_decomposes_correctly() {
-    let world = WorldPos::from_raw(32, 32, 32);
-
-    assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(1, 1, 1));
-    assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(0, 0, 0));
-}
-
-#[test]
-fn negative_one_decomposes_to_previous_chunk_last_voxel() {
-    let world = WorldPos::from_raw(-1, -1, -1);
-
-    assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, -1, -1));
-    assert_eq!(
-        VoxelPos::from(world),
-        VoxelPos::from_raw_checked(31, 31, 31)
-    );
-}
-
-#[test]
-fn negative_chunk_boundary_decomposes_correctly() {
-    let world = WorldPos::from_raw(-32, -32, -32);
-
-    assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, -1, -1));
-    assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(0, 0, 0));
-}
-
-#[test]
-fn negative_coordinate_just_beyond_chunk_boundary_decomposes_correctly() {
-    let world = WorldPos::from_raw(-33, -33, -33);
-
-    assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-2, -2, -2));
-    assert_eq!(
-        VoxelPos::from(world),
-        VoxelPos::from_raw_checked(31, 31, 31)
-    );
-}
-
-#[test]
-fn mixed_sign_coordinates_decompose_independently() {
-    let world = WorldPos::from_raw(-1, 0, 32);
-
-    assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, 0, 1));
-    assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(31, 0, 0));
-}
-
-#[test]
-fn coordinate_decomposition_round_trips() {
-    let cases = [
-        (0, 0, 0),
-        (1, 2, 3),
-        (31, 31, 31),
-        (32, 32, 32),
-        (33, 47, 65),
-        (-1, -1, -1),
-        (-32, -32, -32),
-        (-33, -33, -33),
-        (-65, 42, 97),
-    ];
-
-    for (x, y, z) in cases {
-        let original = WorldPos::from_raw(x, y, z);
-
-        let chunk = ChunkPos::from(original);
-        let voxel = VoxelPos::from(original);
-
-        let reconstructed = WorldPos::from((chunk, voxel));
-
-        assert_eq!(reconstructed, original, "round-trip failed for {original}");
+        assert_eq!(pos.all(), (1, -2, 3));
+        assert_eq!(pos.x(), 1);
+        assert_eq!(pos.y(), -2);
+        assert_eq!(pos.z(), 3);
     }
-}
 
-#[test]
-fn world_conversion_always_produces_valid_voxel_positions() {
-    for x in -100..=100 {
-        for y in -100..=100 {
-            for z in -100..=100 {
-                let world = WorldPos::from_raw(x, y, z);
-                let voxel = VoxelPos::from(world);
+    #[test]
+    fn tuple_conversion_preserves_coordinates() {
+        let pos = Pos::<i32, WorldSpace>::from((1, 2, 3));
 
-                assert!(voxel.x() < CHUNK_SIZE_U8);
-                assert!(voxel.y() < CHUNK_SIZE_U8);
-                assert!(voxel.z() < CHUNK_SIZE_U8);
+        assert_eq!(pos.all(), (1, 2, 3));
+    }
+
+    #[test]
+    fn array_conversion_preserves_coordinates() {
+        let pos = Pos::<i32, WorldSpace>::from([1, 2, 3]);
+
+        assert_eq!(pos.all(), (1, 2, 3));
+    }
+
+    #[test]
+    fn converts_to_tuple() {
+        let pos = Pos::<i32, WorldSpace>::from_raw(1, 2, 3);
+
+        let tuple: (i32, i32, i32) = pos.into();
+
+        assert_eq!(tuple, (1, 2, 3));
+    }
+
+    #[test]
+    fn converts_to_array() {
+        let pos = Pos::<i32, WorldSpace>::from_raw(1, 2, 3);
+
+        let array: [i32; 3] = pos.into();
+
+        assert_eq!(array, [1, 2, 3]);
+    }
+
+    fn takes_chunk_pos(_: ChunkPos) {}
+
+    fn takes_world_voxel_pos(_: WorldPos) {}
+
+    #[test]
+    fn position_aliases_are_usable_as_distinct_types() {
+        let chunk = ChunkPos::from_raw(1, 2, 3);
+        let world = WorldPos::from_raw(1, 2, 3);
+
+        takes_chunk_pos(chunk);
+        takes_world_voxel_pos(world);
+    }
+
+    #[test]
+    fn try_new_accepts_valid_bounds() {
+        assert!(VoxelPos::try_new(0, 0, 0).is_ok());
+        assert!(VoxelPos::try_new(31, 31, 31).is_ok());
+    }
+
+    #[test]
+    fn try_new_accepts_interior_coordinates() {
+        let pos = VoxelPos::try_new(1, 2, 3).unwrap();
+
+        assert_eq!(pos.all(), (1, 2, 3));
+    }
+
+    #[test]
+    fn try_new_rejects_invalid_x() {
+        assert!(VoxelPos::try_new(32, 0, 0).is_err());
+    }
+
+    #[test]
+    fn try_new_rejects_invalid_y() {
+        assert!(VoxelPos::try_new(0, 32, 0).is_err());
+    }
+
+    #[test]
+    fn try_new_rejects_invalid_z() {
+        assert!(VoxelPos::try_new(0, 0, 32).is_err());
+    }
+
+    #[test]
+    fn try_new_rejects_invalid_coordinates() {
+        assert!(VoxelPos::try_new(32, 32, 32).is_err());
+    }
+
+    #[test]
+    fn try_new_rejects_values_above_chunk_bounds() {
+        assert!(VoxelPos::try_new(u8::MAX, 0, 0).is_err());
+        assert!(VoxelPos::try_new(0, u8::MAX, 0).is_err());
+        assert!(VoxelPos::try_new(0, 0, u8::MAX).is_err());
+    }
+
+    #[test]
+    fn from_raw_does_not_modify_coordinates() {
+        let pos = VoxelPos::from_raw(200, 201, 202);
+
+        assert_eq!(pos.all(), (200, 201, 202));
+    }
+
+    #[test]
+    fn from_raw_checked_accepts_valid_coordinates() {
+        let pos = VoxelPos::from_raw_checked(31, 10, 0);
+
+        assert_eq!(pos.all(), (31, 10, 0));
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_raw_checked_panics_on_invalid_x() {
+        let _ = VoxelPos::from_raw_checked(32, 0, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_raw_checked_panics_on_invalid_y() {
+        let _ = VoxelPos::from_raw_checked(0, 32, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_raw_checked_panics_on_invalid_z() {
+        let _ = VoxelPos::from_raw_checked(0, 0, 32);
+    }
+
+    #[test]
+    fn world_origin_decomposes_correctly() {
+        let world = WorldPos::from_raw(0, 0, 0);
+
+        assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(0, 0, 0));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(0, 0, 0));
+    }
+
+    #[test]
+    fn last_voxel_of_first_chunk_decomposes_correctly() {
+        let world = WorldPos::from_raw(31, 31, 31);
+
+        assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(0, 0, 0));
+        assert_eq!(
+            VoxelPos::from(world),
+            VoxelPos::from_raw_checked(31, 31, 31)
+        );
+    }
+
+    #[test]
+    fn first_voxel_of_next_chunk_decomposes_correctly() {
+        let world = WorldPos::from_raw(32, 32, 32);
+
+        assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(1, 1, 1));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(0, 0, 0));
+    }
+
+    #[test]
+    fn negative_one_decomposes_to_previous_chunk_last_voxel() {
+        let world = WorldPos::from_raw(-1, -1, -1);
+
+        assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, -1, -1));
+        assert_eq!(
+            VoxelPos::from(world),
+            VoxelPos::from_raw_checked(31, 31, 31)
+        );
+    }
+
+    #[test]
+    fn negative_chunk_boundary_decomposes_correctly() {
+        let world = WorldPos::from_raw(-32, -32, -32);
+
+        assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, -1, -1));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(0, 0, 0));
+    }
+
+    #[test]
+    fn negative_coordinate_just_beyond_chunk_boundary_decomposes_correctly() {
+        let world = WorldPos::from_raw(-33, -33, -33);
+
+        assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-2, -2, -2));
+        assert_eq!(
+            VoxelPos::from(world),
+            VoxelPos::from_raw_checked(31, 31, 31)
+        );
+    }
+
+    #[test]
+    fn mixed_sign_coordinates_decompose_independently() {
+        let world = WorldPos::from_raw(-1, 0, 32);
+
+        assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, 0, 1));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw_checked(31, 0, 0));
+    }
+
+    #[test]
+    fn coordinate_decomposition_round_trips() {
+        let cases = [
+            (0, 0, 0),
+            (1, 2, 3),
+            (31, 31, 31),
+            (32, 32, 32),
+            (33, 47, 65),
+            (-1, -1, -1),
+            (-32, -32, -32),
+            (-33, -33, -33),
+            (-65, 42, 97),
+        ];
+
+        for (x, y, z) in cases {
+            let original = WorldPos::from_raw(x, y, z);
+
+            let chunk = ChunkPos::from(original);
+            let voxel = VoxelPos::from(original);
+
+            let reconstructed = WorldPos::from((chunk, voxel));
+
+            assert_eq!(reconstructed, original, "round-trip failed for {original}");
+        }
+    }
+
+    #[test]
+    fn world_conversion_always_produces_valid_voxel_positions() {
+        for x in -100..=100 {
+            for y in -100..=100 {
+                for z in -100..=100 {
+                    let world = WorldPos::from_raw(x, y, z);
+                    let voxel = VoxelPos::from(world);
+
+                    assert!(voxel.x() < CHUNK_SIZE_U8);
+                    assert!(voxel.y() < CHUNK_SIZE_U8);
+                    assert!(voxel.z() < CHUNK_SIZE_U8);
+                }
             }
         }
     }
-}
 
-#[test]
-fn chunk_pos_is_suitable_as_hash_map_key() {
-    let mut chunks = std::collections::HashMap::new();
+    #[test]
+    fn chunk_pos_is_suitable_as_hash_map_key() {
+        let mut chunks = std::collections::HashMap::new();
 
-    chunks.insert(ChunkPos::from_raw(-4, 7, 12), "chunk");
+        chunks.insert(ChunkPos::from_raw(-4, 7, 12), "chunk");
 
-    assert_eq!(chunks.get(&ChunkPos::from_raw(-4, 7, 12)), Some(&"chunk"));
+        assert_eq!(chunks.get(&ChunkPos::from_raw(-4, 7, 12)), Some(&"chunk"));
+    }
 }
