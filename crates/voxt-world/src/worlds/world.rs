@@ -31,7 +31,7 @@ impl World {
 #[cfg(test)]
 mod tests {
     use crate::prelude::{Chunk, World};
-    use voxt_core::prelude::{BlockId, ChunkPos, ChunkVoxel, VoxelPos};
+    use voxt_core::prelude::{AtChunk, BlockId, ChunkPos, Pos, VoxelPos};
 
     #[test]
     fn new_world_has_no_chunks() {
@@ -56,7 +56,7 @@ mod tests {
     fn world_can_mutate_chunk_manager() {
         let mut world = World::new();
         let chunk_pos = ChunkPos::from_raw(1, 2, 3);
-        let voxel_pos = VoxelPos::from_raw_checked(4, 5, 6);
+        let voxel_pos = VoxelPos::from_raw(4, 5, 6);
         let block = BlockId::new(42);
 
         world.chunks_mut().insert_chunk(Chunk::new(chunk_pos));
@@ -65,7 +65,7 @@ mod tests {
             .chunks_mut()
             .get_chunk_mut(&chunk_pos)
             .unwrap()
-            .set(ChunkVoxel::new(voxel_pos, block));
+            .set(AtChunk::new(voxel_pos, block));
 
         assert_eq!(
             world

@@ -46,11 +46,11 @@ impl ChunkManager {
 
 #[cfg(test)]
 mod tests {
-    use voxt_core::prelude::{BlockId, ChunkPos, ChunkVoxel, VoxelPos};
+    use voxt_core::prelude::{AtChunk, BlockId, ChunkPos, Pos, VoxelPos};
 
     use crate::chunks::{Chunk, ChunkManager};
 
-    fn chunk(x: i32, y: i32, z: i32) -> Chunk {
+    fn chunk(x: i16, y: i16, z: i16) -> Chunk {
         Chunk::new(ChunkPos::from_raw(x, y, z))
     }
 
@@ -90,16 +90,13 @@ mod tests {
         manager.insert_chunk(Chunk::new(pos));
 
         let chunk = manager.get_chunk_mut(&pos).unwrap();
-        let _ = chunk.set(ChunkVoxel::new(
-            VoxelPos::from_raw_checked(0, 0, 0),
-            BlockId::new(1),
-        ));
+        let _ = chunk.set(AtChunk::new(VoxelPos::from_raw(0, 0, 0), BlockId::new(1)));
 
         assert_eq!(
             manager
                 .get_chunk(&pos)
                 .unwrap()
-                .get(VoxelPos::from_raw_checked(0, 0, 0))
+                .get(VoxelPos::from_raw(0, 0, 0))
                 .id(),
             BlockId::new(1)
         );
@@ -147,10 +144,7 @@ mod tests {
         let first = Chunk::new(pos);
 
         let mut second = Chunk::new(pos);
-        let _ = second.set(ChunkVoxel::new(
-            VoxelPos::from_raw_checked(0, 0, 0),
-            BlockId::new(42),
-        ));
+        let _ = second.set(AtChunk::new(VoxelPos::from_raw(0, 0, 0), BlockId::new(42)));
 
         assert!(manager.insert_chunk(first).is_none());
 
@@ -164,7 +158,7 @@ mod tests {
             manager
                 .get_chunk(&pos)
                 .unwrap()
-                .get(VoxelPos::from_raw_checked(0, 0, 0))
+                .get(VoxelPos::from_raw(0, 0, 0))
                 .id(),
             BlockId::new(42)
         );

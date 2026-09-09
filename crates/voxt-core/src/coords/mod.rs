@@ -1,7 +1,6 @@
+mod block_at;
 mod dir;
 mod pos;
-mod voxat;
-mod voxel;
 
+pub use block_at::{AtChunk, AtWorld, BlockAt};
 pub use pos::{ChunkPos, Pos, PosError, VoxelPos, WorldPos};
-//pub use voxel::{ChunkVoxel, WorldVoxel};

@@ -11,7 +11,7 @@ pub mod prelude {
         };
     }
     pub use super::{
-        coords::{ChunkPos, Pos, PosError, VoxelPos, WorldPos},
+        coords::{AtChunk, AtWorld, BlockAt, ChunkPos, Pos, PosError, VoxelPos, WorldPos},
         ids::{BlockId, ChunkVersion},
     };
 }

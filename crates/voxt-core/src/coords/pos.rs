@@ -1,8 +1,8 @@
 use std::{
     error::Error,
-    fmt::Display,
+    fmt::{Debug, Display},
     hash::Hash,
-    ops::{Add, Range, Sub},
+    ops::{Add, Range, RangeInclusive, Sub},
 };
 
 use num_traits::{AsPrimitive, CheckedAdd, CheckedSub, FromPrimitive};
@@ -10,7 +10,6 @@ use num_traits::{AsPrimitive, CheckedAdd, CheckedSub, FromPrimitive};
 use crate::{
     constants::{
         CHUNK_SIZE, WORLD_HEIGHT, WORLD_HEIGHT_IN_CHUNKS, WORLD_SIZE, WORLD_SIZE_IN_CHUNKS,
-        WORLD_SIZE_IN_CHUNKS_LOG,
     },
     coords::dir::Dir,
 };
@@ -29,7 +28,7 @@ mod coord {
     impl Coord for i32 {}
 }
 
-pub trait Pos {
+pub trait Pos: Debug + Clone + Copy + Display {
     type T: coord::Coord;
     type E: Error;
 
@@ -59,12 +58,12 @@ pub trait Pos {
         self.pos().2
     }
 
-    fn range() -> Range<Self::T> {
-        Self::MIN..Self::MAX
+    fn range() -> RangeInclusive<Self::T> {
+        Self::MIN..=Self::MAX
     }
 
-    fn range_height() -> Range<Self::T> {
-        Self::MIN_HEIGHT..Self::MAX_HEIGHT
+    fn range_height() -> RangeInclusive<Self::T> {
+        Self::MIN_HEIGHT..=Self::MAX_HEIGHT
     }
 
     fn neighbor(&self, dir: Dir) -> Option<Self>
@@ -159,8 +158,6 @@ pub struct VoxelPos {
 }
 
 impl VoxelPos {
-    pub const MAX: u8 = CHUNK_SIZE as u8;
-
     #[inline]
     #[must_use]
     pub fn from_raw(x: u8, y: u8, z: u8) -> Self {
@@ -340,11 +337,11 @@ impl Pos for ChunkPos {
     type T = i16;
     type E = PosError;
 
-    const MIN: Self::T = -(WORLD_SIZE_IN_CHUNKS as i16);
-    const MAX: Self::T = WORLD_SIZE_IN_CHUNKS as i16;
+    const MIN: Self::T = -((WORLD_SIZE_IN_CHUNKS >> 1) as i16);
+    const MAX: Self::T = (WORLD_SIZE_IN_CHUNKS >> 1) as i16 - 1;
 
-    const MIN_HEIGHT: Self::T = 0;
-    const MAX_HEIGHT: Self::T = WORLD_HEIGHT_IN_CHUNKS as i16;
+    const MIN_HEIGHT: Self::T = -((WORLD_HEIGHT_IN_CHUNKS >> 1) as i16);
+    const MAX_HEIGHT: Self::T = (WORLD_HEIGHT_IN_CHUNKS >> 1) as i16 - 1;
 
     fn from_raw(x: Self::T, y: Self::T, z: Self::T) -> Self {
         debug_assert!(Self::range().contains(&x), "x not in range of world max");
@@ -484,11 +481,11 @@ impl Pos for WorldPos {
     type T = i32;
     type E = PosError;
 
-    const MIN: Self::T = -(WORLD_SIZE as i32);
-    const MAX: Self::T = WORLD_SIZE as i32;
+    const MIN: Self::T = -((WORLD_SIZE >> 1) as i32);
+    const MAX: Self::T = (WORLD_SIZE >> 1) as i32 - 1;
 
-    const MIN_HEIGHT: Self::T = 0;
-    const MAX_HEIGHT: Self::T = WORLD_HEIGHT as i32;
+    const MIN_HEIGHT: Self::T = -((WORLD_HEIGHT >> 1) as i32);
+    const MAX_HEIGHT: Self::T = (WORLD_HEIGHT >> 1) as i32 - 1;
 
     fn from_raw(x: i32, y: i32, z: i32) -> Self {
         debug_assert!(Self::range().contains(&x), "x not in range of world max");
@@ -677,7 +674,7 @@ mod tests {
     #[test]
     fn try_new_accepts_valid_bounds() {
         assert!(VoxelPos::try_new(0, 0, 0).is_ok());
-        assert!(VoxelPos::try_new(31, 31, 31).is_ok());
+        assert!(VoxelPos::try_new(63, 63, 63).is_ok());
     }
 
     #[test]
@@ -689,22 +686,22 @@ mod tests {
 
     #[test]
     fn try_new_rejects_invalid_x() {
-        assert!(VoxelPos::try_new(32, 0, 0).is_err());
+        assert!(VoxelPos::try_new(64, 0, 0).is_err());
     }
 
     #[test]
     fn try_new_rejects_invalid_y() {
-        assert!(VoxelPos::try_new(0, 32, 0).is_err());
+        assert!(VoxelPos::try_new(0, 64, 0).is_err());
     }
 
     #[test]
     fn try_new_rejects_invalid_z() {
-        assert!(VoxelPos::try_new(0, 0, 32).is_err());
+        assert!(VoxelPos::try_new(0, 0, 64).is_err());
     }
 
     #[test]
     fn try_new_rejects_invalid_coordinates() {
-        assert!(VoxelPos::try_new(32, 32, 32).is_err());
+        assert!(VoxelPos::try_new(64, 64, 64).is_err());
     }
 
     #[test]
@@ -715,35 +712,28 @@ mod tests {
     }
 
     #[test]
-    fn from_raw_does_not_modify_coordinates() {
-        let pos = VoxelPos::from_raw(200, 201, 202);
-
-        assert_eq!(pos.pos(), (200, 201, 202));
-    }
-
-    #[test]
     fn from_raw_accepts_valid_coordinates() {
-        let pos = VoxelPos::from_raw(31, 10, 0);
+        let pos = VoxelPos::from_raw(63, 10, 0);
 
-        assert_eq!(pos.pos(), (31, 10, 0));
+        assert_eq!(pos.pos(), (63, 10, 0));
     }
 
     #[test]
     #[should_panic]
     fn from_raw_panics_on_invalid_x() {
-        let _ = VoxelPos::from_raw(32, 0, 0);
+        let _ = VoxelPos::from_raw(64, 0, 0);
     }
 
     #[test]
     #[should_panic]
     fn from_raw_panics_on_invalid_y() {
-        let _ = VoxelPos::from_raw(0, 32, 0);
+        let _ = VoxelPos::from_raw(0, 64, 0);
     }
 
     #[test]
     #[should_panic]
     fn from_raw_panics_on_invalid_z() {
-        let _ = VoxelPos::from_raw(0, 0, 32);
+        let _ = VoxelPos::from_raw(0, 0, 64);
     }
 
     #[test]
@@ -756,15 +746,15 @@ mod tests {
 
     #[test]
     fn last_voxel_of_first_chunk_decomposes_correctly() {
-        let world = WorldPos::from_raw(31, 31, 31);
+        let world = WorldPos::from_raw(63, 63, 63);
 
         assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(0, 0, 0));
-        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(31, 31, 31));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(63, 63, 63));
     }
 
     #[test]
     fn first_voxel_of_next_chunk_decomposes_correctly() {
-        let world = WorldPos::from_raw(32, 32, 32);
+        let world = WorldPos::from_raw(64, 64, 64);
 
         assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(1, 1, 1));
         assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(0, 0, 0));
@@ -775,12 +765,12 @@ mod tests {
         let world = WorldPos::from_raw(-1, -1, -1);
 
         assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, -1, -1));
-        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(31, 31, 31));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(63, 63, 63));
     }
 
     #[test]
     fn negative_chunk_boundary_decomposes_correctly() {
-        let world = WorldPos::from_raw(-32, -32, -32);
+        let world = WorldPos::from_raw(-64, -64, -64);
 
         assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, -1, -1));
         assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(0, 0, 0));
@@ -788,18 +778,18 @@ mod tests {
 
     #[test]
     fn negative_coordinate_just_beyond_chunk_boundary_decomposes_correctly() {
-        let world = WorldPos::from_raw(-33, -33, -33);
+        let world = WorldPos::from_raw(-65, -65, -65);
 
         assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-2, -2, -2));
-        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(31, 31, 31));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(63, 63, 63));
     }
 
     #[test]
     fn mixed_sign_coordinates_decompose_independently() {
-        let world = WorldPos::from_raw(-1, 0, 32);
+        let world = WorldPos::from_raw(-1, 0, 64);
 
         assert_eq!(ChunkPos::from(world), ChunkPos::from_raw(-1, 0, 1));
-        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(31, 0, 0));
+        assert_eq!(VoxelPos::from(world), VoxelPos::from_raw(63, 0, 0));
     }
 
     #[test]
@@ -807,11 +797,11 @@ mod tests {
         let cases = [
             (0, 0, 0),
             (1, 2, 3),
-            (31, 31, 31),
-            (32, 32, 32),
+            (63, 63, 63),
+            (64, 64, 64),
             (33, 47, 65),
             (-1, -1, -1),
-            (-32, -32, -32),
+            (-64, -64, -64),
             (-33, -33, -33),
             (-65, 42, 97),
         ];
