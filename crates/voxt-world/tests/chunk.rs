@@ -1,9 +1,9 @@
-use voxt_core::prelude::{BlockId, ChunkPos, VoxelPos};
-
-use voxt_world::{
-    prelude::{Chunk, Voxel},
+use voxt_core::{
+    prelude::{BlockId, ChunkPos, ChunkVoxel, VoxelPos},
     vox,
 };
+
+use voxt_world::prelude::Chunk;
 
 #[test]
 fn public_chunk_api_supports_read_modify_read() {
@@ -14,7 +14,9 @@ fn public_chunk_api_supports_read_modify_read() {
 
     assert_eq!(chunk.get(pos).id(), BlockId::new(0));
 
-    let old = chunk.set_bulk(vox!(pos => stone)).unwrap();
+    let voxels = vox!( C 10,20,30 => stone.id());
+
+    let old = chunk.set_bulk(voxels).unwrap();
 
     assert_eq!(old[0].id(), BlockId::new(0));
     assert_eq!(chunk.get(pos).id(), stone);

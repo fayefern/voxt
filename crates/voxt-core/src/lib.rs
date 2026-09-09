@@ -1,16 +1,17 @@
 mod constants;
+mod coords;
 mod ids;
-mod pos;
 
 pub mod prelude {
     pub mod constants {
         pub use super::super::constants::{
-            AIR, CHUNK_LOG_USZ, CHUNK_SIZE_I32, CHUNK_SIZE_U8, CHUNK_SIZE_USZ, WORLD_NEG_I32,
-            WORLD_POS_I32, WORLD_SIZE_USZ,
+            AIR, CHUNK_SIZE, CHUNK_SIZE_LOG, WORLD_HEIGHT, WORLD_HEIGHT_IN_CHUNKS,
+            WORLD_HEIGHT_IN_CHUNKS_LOG, WORLD_HEIGHT_LOG, WORLD_SIZE, WORLD_SIZE_IN_CHUNKS,
+            WORLD_SIZE_IN_CHUNKS_LOG, WORLD_SIZE_LOG,
         };
     }
     pub use super::{
+        coords::{ChunkPos, Pos, PosError, VoxelPos, WorldPos},
         ids::{BlockId, ChunkVersion},
-        pos::{ChunkPos, VoxelPos, WorldPos},
     };
 }

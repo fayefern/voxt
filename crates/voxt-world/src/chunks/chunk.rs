@@ -1,9 +1,7 @@
 use voxt_core::prelude::{
-    BlockId, ChunkPos, ChunkVersion, VoxelPos,
+    BlockId, ChunkPos, ChunkVersion, ChunkVoxel, VoxelPos,
     constants::{AIR, CHUNK_LOG_USZ, CHUNK_SIZE_USZ},
 };
-
-use crate::chunks::voxel::Voxel;
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
@@ -38,7 +36,7 @@ impl Chunk {
     /// Use `new` if intent on creating an empty `Chunk`
     /// If the slice is longer than the chunk volume, the extra elements are ignored.
     #[must_use]
-    pub fn new_with(chunk_pos: ChunkPos, blocks: &[Voxel]) -> Self {
+    pub fn new_with(chunk_pos: ChunkPos, blocks: &[ChunkVoxel]) -> Self {
         Self {
             chunk_pos,
             version: ChunkVersion::new(0),
@@ -64,13 +62,13 @@ impl Chunk {
 
     #[must_use]
     /// Returns the block at the given position.
-    pub const fn get(&self, pos: VoxelPos) -> Voxel {
+    pub const fn get(&self, pos: VoxelPos) -> ChunkVoxel {
         self.data.get_helper(pos)
     }
 
     #[must_use]
     /// Returns the blocks at the given positions.
-    pub fn get_bulk(&self, poss: &[VoxelPos]) -> Option<Box<[Voxel]>> {
+    pub fn get_bulk(&self, poss: &[VoxelPos]) -> Option<Box<[ChunkVoxel]>> {
         if poss.is_empty() {
             None
         } else {
@@ -80,7 +78,7 @@ impl Chunk {
 
     #[must_use]
     /// Swaps the block at the given position with the provided block, returning the previous block
-    pub fn set(&mut self, block: Voxel) -> Voxel {
+    pub fn set(&mut self, block: ChunkVoxel) -> ChunkVoxel {
         let (res, changed) = self.data.set_helper(block);
 
         if changed {
@@ -93,8 +91,8 @@ impl Chunk {
     #[must_use]
     /// Swaps the blocks at the given positions with the provided blocks, returning the previous blocks.
     ///
-    /// May return None if the provided [Voxel] slice is empty.
-    pub fn set_bulk(&mut self, blocks: &[Voxel]) -> Option<Box<[Voxel]>> {
+    /// May return None if the provided [ChunkVoxel] slice is empty.
+    pub fn set_bulk(&mut self, blocks: &[ChunkVoxel]) -> Option<Box<[ChunkVoxel]>> {
         if blocks.is_empty() {
             None
         } else {
@@ -131,7 +129,7 @@ impl ChunkData {
     /// Creates a new `ChunkData` with the given blocks. For now what that means is that it will always be a `ChunkNaive`,
     /// unless the provided blocks are empty.
     #[must_use]
-    fn new_with(blocks: &[Voxel]) -> Self {
+    fn new_with(blocks: &[ChunkVoxel]) -> Self {
         if blocks.is_empty() {
             Self::Empty
         } else {
@@ -148,30 +146,30 @@ impl ChunkData {
     }
 
     /// Returns the block at the given position.
-    const fn get_helper(&self, pos: VoxelPos) -> Voxel {
+    const fn get_helper(&self, pos: VoxelPos) -> ChunkVoxel {
         match self {
-            Self::Empty => Voxel::new(pos, AIR),
+            Self::Empty => ChunkVoxel::new(pos, AIR),
             Self::General(c) => c.get_naive(pos),
         }
     }
 
-    fn get_bulk_helper(&self, poss: &[VoxelPos]) -> Box<[Voxel]> {
+    fn get_bulk_helper(&self, poss: &[VoxelPos]) -> Box<[ChunkVoxel]> {
         match self {
-            Self::Empty => poss.iter().map(|&p| Voxel::new(p, AIR)).collect(),
+            Self::Empty => poss.iter().map(|&p| ChunkVoxel::new(p, AIR)).collect(),
             Self::General(c) => c.get_bulk_naive(poss),
         }
     }
 
-    fn set_helper(&mut self, block: Voxel) -> (Voxel, bool) {
+    fn set_helper(&mut self, block: ChunkVoxel) -> (ChunkVoxel, bool) {
         match self {
             Self::Empty => {
                 let pos = block.pos();
                 let new_id = block.id();
 
-                let old_block = Voxel::new(pos, AIR);
+                let old_block = ChunkVoxel::new(pos, AIR);
 
                 if !new_id.is_air() {
-                    *self = Self::General(ChunkNaive::new(&[Voxel::new(pos, new_id)]));
+                    *self = Self::General(ChunkNaive::new(&[ChunkVoxel::new(pos, new_id)]));
 
                     (old_block, true)
                 } else {
@@ -194,19 +192,19 @@ impl ChunkData {
         }
     }
 
-    fn set_bulk_helper(&mut self, blocks: &[Voxel]) -> (Box<[Voxel]>, bool) {
+    fn set_bulk_helper(&mut self, blocks: &[ChunkVoxel]) -> (Box<[ChunkVoxel]>, bool) {
         match self {
             Self::Empty => {
                 let old_blocks = blocks
                     .iter()
-                    .map(|vox| Voxel::new(vox.pos(), AIR))
+                    .map(|vox| ChunkVoxel::new(vox.pos(), AIR))
                     .collect();
 
                 let data = blocks
                     .iter()
                     .filter_map(|vox| {
                         if !vox.id().is_air() {
-                            Some(Voxel::new(vox.pos(), vox.id()))
+                            Some(ChunkVoxel::new(vox.pos(), vox.id()))
                         } else {
                             None
                         }
@@ -257,7 +255,7 @@ impl ChunkNaive {
     ///
     /// If blocks is empty, this is equivalent to `new`
     #[must_use]
-    fn new(blocks: &[Voxel]) -> Self {
+    fn new(blocks: &[ChunkVoxel]) -> Self {
         let mut chunk = Self {
             data: Box::new([AIR; Chunk::VOL]),
             occupancy: 0,
@@ -270,21 +268,21 @@ impl ChunkNaive {
 
     /// Gets the block at the given position. This is a helper function for the `get` method
     #[must_use]
-    const fn get_naive(&self, pos: VoxelPos) -> Voxel {
-        Voxel::new(pos, self.data[naive(pos) as usize])
+    const fn get_naive(&self, pos: VoxelPos) -> ChunkVoxel {
+        ChunkVoxel::new(pos, self.data[naive(pos) as usize])
     }
 
     /// Gets the blocks at the given positions in bulk. This is a helper function for the `get_bulk` method
     #[must_use]
-    fn get_bulk_naive(&self, poss: &[VoxelPos]) -> Box<[Voxel]> {
+    fn get_bulk_naive(&self, poss: &[VoxelPos]) -> Box<[ChunkVoxel]> {
         poss.iter()
-            .map(|&pos| Voxel::new(pos, self.data[naive(pos) as usize]))
+            .map(|&pos| ChunkVoxel::new(pos, self.data[naive(pos) as usize]))
             .collect()
     }
 
     /// Sets the block at the given position. This is a helper function for the `set` method
     #[must_use]
-    const fn set_naive(&mut self, block: Voxel) -> Voxel {
+    const fn set_naive(&mut self, block: ChunkVoxel) -> ChunkVoxel {
         let pos = block.pos();
         let new_id = block.id();
 
@@ -298,12 +296,12 @@ impl ChunkNaive {
             }
         }
 
-        Voxel::new(pos, old_id)
+        ChunkVoxel::new(pos, old_id)
     }
 
     /// Sets the blocks at the given positions in bulk. This is a helper function for the `set_bulk` method
     #[must_use]
-    fn set_bulk_naive(&mut self, blocks: &[Voxel]) -> Box<[Voxel]> {
+    fn set_bulk_naive(&mut self, blocks: &[ChunkVoxel]) -> Box<[ChunkVoxel]> {
         blocks
             .iter()
             .map(|vox| {
@@ -320,7 +318,7 @@ impl ChunkNaive {
                     }
                 }
 
-                Voxel::new(pos, old_id)
+                ChunkVoxel::new(pos, old_id)
             })
             .collect()
     }
@@ -366,8 +364,11 @@ static INDEX: [[[u16; Chunk::WIDTH]; Chunk::WIDTH]; Chunk::WIDTH] = {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::{Chunk, Voxel, vox};
-    use voxt_core::prelude::{BlockId, ChunkPos, VoxelPos, constants::AIR};
+    use crate::prelude::Chunk;
+    use voxt_core::{
+        prelude::{BlockId, ChunkPos, ChunkVoxel, VoxelPos, constants::AIR},
+        vox,
+    };
 
     #[test]
     fn new_chunk_is_empty() {
@@ -398,7 +399,7 @@ mod tests {
     fn new_with_places_blocks_at_requested_positions() {
         let chunk = Chunk::new_with(
             ChunkPos::from_raw(0, 0, 0),
-            vox!(
+            vox!( C
                 1,2,3 => 1,
                 31,31,31 => 2,
             ),
@@ -426,7 +427,7 @@ mod tests {
 
         let stone = BlockId::new(1);
 
-        let _ = chunk.set(Voxel::new(target, stone));
+        let _ = chunk.set(ChunkVoxel::new(target, stone));
 
         assert_eq!(chunk.get(target).id(), stone);
         assert_eq!(chunk.get(other).id(), AIR);
@@ -440,12 +441,12 @@ mod tests {
         let stone = BlockId::new(1);
         let dirt = BlockId::new(2);
 
-        let old = chunk.set(Voxel::new(pos, stone));
+        let old = chunk.set(ChunkVoxel::new(pos, stone));
 
         assert_eq!(old.pos(), pos);
         assert_eq!(old.id(), AIR);
 
-        let old = chunk.set(Voxel::new(pos, dirt));
+        let old = chunk.set(ChunkVoxel::new(pos, dirt));
 
         assert_eq!(old.pos(), pos);
         assert_eq!(old.id(), stone);
@@ -462,10 +463,10 @@ mod tests {
 
         assert_eq!(chunk.get(pos).id(), AIR);
 
-        let _ = chunk.set(Voxel::new(pos, stone));
+        let _ = chunk.set(ChunkVoxel::new(pos, stone));
         assert_eq!(chunk.get(pos).id(), stone);
 
-        let _ = chunk.set(Voxel::new(pos, AIR));
+        let _ = chunk.set(ChunkVoxel::new(pos, AIR));
         assert_eq!(chunk.get(pos).id(), AIR);
     }
 
@@ -476,10 +477,10 @@ mod tests {
         let pos = VoxelPos::from_raw_checked(1, 1, 1);
         let stone = BlockId::new(1);
 
-        let _ = chunk.set(Voxel::new(pos, stone));
+        let _ = chunk.set(ChunkVoxel::new(pos, stone));
         let version_after_change = chunk.version();
 
-        let old = chunk.set(Voxel::new(pos, stone));
+        let old = chunk.set(ChunkVoxel::new(pos, stone));
 
         assert_eq!(old.id(), stone);
         assert_eq!(chunk.version(), version_after_change);
@@ -495,11 +496,11 @@ mod tests {
 
         assert_eq!(chunk.version().as_u64(), 0);
 
-        let _ = chunk.set(Voxel::new(pos, stone));
+        let _ = chunk.set(ChunkVoxel::new(pos, stone));
 
         assert_eq!(chunk.version().as_u64(), 1);
 
-        let _ = chunk.set(Voxel::new(pos, BlockId::new(2)));
+        let _ = chunk.set(ChunkVoxel::new(pos, BlockId::new(2)));
 
         assert_eq!(chunk.version().as_u64(), 2);
     }
@@ -511,10 +512,10 @@ mod tests {
         let pos = VoxelPos::from_raw_checked(1, 2, 3);
         let stone = BlockId::new(1);
 
-        let _ = chunk.set(Voxel::new(pos, stone));
+        let _ = chunk.set(ChunkVoxel::new(pos, stone));
         assert_eq!(chunk.version().as_u64(), 1);
 
-        let _ = chunk.set(Voxel::new(pos, AIR));
+        let _ = chunk.set(ChunkVoxel::new(pos, AIR));
         assert_eq!(chunk.version().as_u64(), 2);
     }
 
@@ -536,7 +537,7 @@ mod tests {
         for (i, pos) in corners.into_iter().enumerate() {
             let block = BlockId::new((i + 1) as u16);
 
-            let _ = chunk.set(Voxel::new(pos, block));
+            let _ = chunk.set(ChunkVoxel::new(pos, block));
         }
 
         for (i, pos) in corners.into_iter().enumerate() {
@@ -560,7 +561,7 @@ mod tests {
         ];
 
         for (i, pos) in positions.into_iter().enumerate() {
-            let _ = chunk.set(Voxel::new(pos, BlockId::new((i + 1) as u16)));
+            let _ = chunk.set(ChunkVoxel::new(pos, BlockId::new((i + 1) as u16)));
         }
 
         for (i, pos) in positions.into_iter().enumerate() {
@@ -572,7 +573,7 @@ mod tests {
     fn get_bulk_preserves_requested_order() {
         let chunk = Chunk::new_with(
             ChunkPos::from_raw(0, 0, 0),
-            vox!(
+            vox!( C
             1,2,3 => 1,
             4,5,6 => 2,
             7,8,9 => 3,
@@ -629,7 +630,9 @@ mod tests {
 
         let blocks = &[BlockId::new(1), BlockId::new(2), BlockId::new(3)][..];
 
-        let old = chunk.set_bulk(&Voxel::new_bulk(positions, blocks)).unwrap();
+        let old = chunk
+            .set_bulk(&ChunkVoxel::new_bulk(positions, blocks))
+            .unwrap();
 
         assert_eq!(old.len(), 3);
 
@@ -656,9 +659,11 @@ mod tests {
 
         let second = &[BlockId::new(3), BlockId::new(4)][..];
 
-        let _ = chunk.set_bulk(&Voxel::new_bulk(positions, first));
+        let _ = chunk.set_bulk(&ChunkVoxel::new_bulk(positions, first));
 
-        let old = chunk.set_bulk(&Voxel::new_bulk(positions, second)).unwrap();
+        let old = chunk
+            .set_bulk(&ChunkVoxel::new_bulk(positions, second))
+            .unwrap();
 
         assert_eq!(old[0].id(), first[0]);
         assert_eq!(old[1].id(), first[1]);
@@ -678,7 +683,7 @@ mod tests {
         let positions = &[c, a, b][..];
         let blocks = &[BlockId::new(3), BlockId::new(1), BlockId::new(2)][..];
 
-        let _ = chunk.set_bulk(&Voxel::new_bulk(positions, blocks));
+        let _ = chunk.set_bulk(&ChunkVoxel::new_bulk(positions, blocks));
 
         assert_eq!(chunk.get(c).id(), BlockId::new(3));
         assert_eq!(chunk.get(a).id(), BlockId::new(1));
@@ -696,7 +701,9 @@ mod tests {
 
         let blocks = &[AIR, AIR][..];
 
-        let old = chunk.set_bulk(&Voxel::new_bulk(positions, blocks)).unwrap();
+        let old = chunk
+            .set_bulk(&ChunkVoxel::new_bulk(positions, blocks))
+            .unwrap();
 
         assert_eq!(old[0].id(), AIR);
         assert_eq!(old[1].id(), AIR);
@@ -715,12 +722,12 @@ mod tests {
             VoxelPos::from_raw_checked(4, 5, 6),
         ][..];
 
-        let _ = chunk.set_bulk(&Voxel::new_bulk(
+        let _ = chunk.set_bulk(&ChunkVoxel::new_bulk(
             positions,
             &[BlockId::new(1), BlockId::new(2)][..],
         ));
 
-        let _ = chunk.set_bulk(&Voxel::new_bulk(positions, &[AIR, AIR][..]));
+        let _ = chunk.set_bulk(&ChunkVoxel::new_bulk(positions, &[AIR, AIR][..]));
 
         for &pos in positions {
             assert_eq!(chunk.get(pos).id(), AIR);
@@ -731,10 +738,10 @@ mod tests {
     fn set_bulk_increments_version_once_for_multiple_changes() {
         let mut chunk = Chunk::new(ChunkPos::from_raw(0, 0, 0));
 
-        let voxels = vox!(
-            VoxelPos::from_raw_checked(1, 2, 3) => BlockId::new(1),
-            VoxelPos::from_raw_checked(4, 5, 6) => BlockId::new(2),
-            VoxelPos::from_raw_checked(7, 8, 9) => BlockId::new(3),
+        let voxels = vox!( C
+            1, 2, 3 => 1,
+            4, 5, 6 => 2,
+            7, 8, 9 => 3,
         );
 
         let _ = chunk.set_bulk(voxels);
@@ -746,9 +753,9 @@ mod tests {
     fn repeated_identical_bulk_set_is_a_no_op() {
         let mut chunk = Chunk::new(ChunkPos::from_raw(0, 0, 0));
 
-        let voxels = vox!(
-            VoxelPos::from_raw_checked(1, 2, 3) => BlockId::new(1),
-            VoxelPos::from_raw_checked(4, 5, 6) => BlockId::new(2),
+        let voxels = vox!( C
+            1, 2, 3 => 1,
+            4, 5, 6 => 2,
         );
 
         let _ = chunk.set_bulk(voxels);
