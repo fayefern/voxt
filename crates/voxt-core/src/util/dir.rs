@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
 /// Direction in 3D space.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Dir {
     /// Positive Y-axis direction.
     Up,
@@ -28,7 +28,6 @@ impl Dir {
     ];
 
     /// Returns the inverse direction.
-    #[inline]
     #[must_use]
     pub const fn inv(&self) -> Self {
         match self {
@@ -42,35 +41,30 @@ impl Dir {
     }
 
     /// Returns true if the direction is along the X-axis.
-    #[inline]
     #[must_use]
     pub const fn is_x(&self) -> bool {
         matches!(self, Self::Left | Self::Right)
     }
 
     /// Returns true if the direction is along the Y-axis.
-    #[inline]
     #[must_use]
     pub const fn is_y(&self) -> bool {
         matches!(self, Self::Up | Self::Down)
     }
 
     /// Returns true if the direction is along the Z-axis.
-    #[inline]
     #[must_use]
     pub const fn is_z(&self) -> bool {
         matches!(self, Self::Front | Self::Back)
     }
 
     /// Returns true if the direction is positive.
-    #[inline]
     #[must_use]
     pub const fn is_plus(&self) -> bool {
         matches!(self, Self::Up | Self::Right | Self::Front)
     }
 
     /// Returns true if the direction is negative.
-    #[inline]
     #[must_use]
     pub const fn is_minus(&self) -> bool {
         matches!(self, Self::Down | Self::Left | Self::Back)
@@ -79,7 +73,6 @@ impl Dir {
     /// Returns an iterator over all directions in the order that follows:
     ///
     /// Up, Down, Left, Right, Front, Back.
-    #[inline]
     pub fn iter() -> impl Iterator<Item = Self> {
         Self::LIST.into_iter()
     }
@@ -87,21 +80,19 @@ impl Dir {
     /// Receives a tuple of the direction's x, y, and z unitary components.
     ///
     /// Returns the corresponding direction if the tuple is a valid unit.
-    #[inline]
-    pub const fn from_off_tuple((x, y, z): (i8, i8, i8)) -> Result<Self, ()> {
+    pub const fn from_off_tuple((x, y, z): (i8, i8, i8)) -> Option<Self> {
         match (x, y, z) {
-            (0, 1, 0) => Ok(Self::Up),
-            (0, -1, 0) => Ok(Self::Down),
-            (-1, 0, 0) => Ok(Self::Left),
-            (1, 0, 0) => Ok(Self::Right),
-            (0, 0, 1) => Ok(Self::Front),
-            (0, 0, -1) => Ok(Self::Back),
-            _ => Err(()),
+            (0, 1, 0) => Some(Self::Up),
+            (0, -1, 0) => Some(Self::Down),
+            (-1, 0, 0) => Some(Self::Left),
+            (1, 0, 0) => Some(Self::Right),
+            (0, 0, 1) => Some(Self::Front),
+            (0, 0, -1) => Some(Self::Back),
+            _ => None,
         }
     }
 
     /// Returns the direction's x, y, and z unitary components as a tuple of i8
-    #[inline]
     #[must_use]
     pub const fn as_off_tuple(&self) -> (i8, i8, i8) {
         match self {
@@ -117,21 +108,19 @@ impl Dir {
     /// Receives an array of the direction's x, y, and z unitary components.
     ///
     /// Returns the corresponding direction if the tuple is a valid unit.
-    #[inline]
-    pub const fn from_off_array([x, y, z]: [i8; 3]) -> Result<Self, ()> {
+    pub const fn from_off_array([x, y, z]: [i8; 3]) -> Option<Self> {
         match (x, y, z) {
-            (0, 1, 0) => Ok(Self::Up),
-            (0, -1, 0) => Ok(Self::Down),
-            (-1, 0, 0) => Ok(Self::Left),
-            (1, 0, 0) => Ok(Self::Right),
-            (0, 0, 1) => Ok(Self::Front),
-            (0, 0, -1) => Ok(Self::Back),
-            _ => Err(()),
+            (0, 1, 0) => Some(Self::Up),
+            (0, -1, 0) => Some(Self::Down),
+            (-1, 0, 0) => Some(Self::Left),
+            (1, 0, 0) => Some(Self::Right),
+            (0, 0, 1) => Some(Self::Front),
+            (0, 0, -1) => Some(Self::Back),
+            _ => None,
         }
     }
 
     /// Returns the direction's x, y, and z unitary components as an array of i8
-    #[inline]
     #[must_use]
     pub const fn as_off_array(&self) -> [i8; 3] {
         match self {
@@ -145,25 +134,9 @@ impl Dir {
     }
 }
 
-impl TryFrom<(i8, i8, i8)> for Dir {
-    type Error = ();
-
-    fn try_from(te: (i8, i8, i8)) -> Result<Self, Self::Error> {
-        Self::from_off_tuple(te)
-    }
-}
-
 impl From<Dir> for (i8, i8, i8) {
     fn from(d: Dir) -> Self {
         d.as_off_tuple()
-    }
-}
-
-impl TryFrom<[i8; 3]> for Dir {
-    type Error = ();
-
-    fn try_from(ay: [i8; 3]) -> Result<Self, Self::Error> {
-        Self::from_off_array(ay)
     }
 }
 

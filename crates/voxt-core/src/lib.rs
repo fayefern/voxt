@@ -1,6 +1,7 @@
 mod constants;
 mod coords;
 mod ids;
+mod util;
 
 pub mod prelude {
     pub mod constants {
@@ -11,7 +12,11 @@ pub mod prelude {
         };
     }
     pub use super::{
-        coords::{AtChunk, AtWorld, BlockAt, ChunkPos, Pos, PosError, VoxelPos, WorldPos},
+        coords::{
+            BatVoxel, BatWorld, BlockAt, ChunkPos, FlatIdx, HilbertIdx, HilbertLinearIdx,
+            MortonIdx, Pos, VoxelPos, WorldPos,
+        },
         ids::{BlockId, ChunkVersion},
+        util::Dir,
     };
 }

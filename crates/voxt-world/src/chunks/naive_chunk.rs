@@ -1,5 +1,5 @@
 use voxt_core::prelude::{
-    AtChunk, BlockId, Pos, VoxelPos,
+    BatVoxel, BlockId, Pos, VoxelPos,
     constants::{AIR, CHUNK_SIZE_LOG},
 };
 
@@ -20,13 +20,25 @@ impl ChunkNaive {
     ///
     /// If blocks is empty, this is equivalent to `new`
     #[must_use]
-    pub fn new(blocks: &[AtChunk]) -> Self {
+    pub fn new(blocks: &[BatVoxel]) -> Self {
         let mut chunk = Self {
             data: Box::new([AIR; Chunk::VOL]),
             occupancy: 0,
         };
 
-        let _ = chunk.set_bulk_naive(blocks);
+        for &new_block in blocks.iter() {
+            let pos = new_block.pos();
+            let new_id = new_block.id();
+            let old_id = std::mem::replace(&mut chunk.data[naive(pos) as usize], new_id);
+
+            if !old_id.is_equal(&new_id) {
+                if new_id.is_air() {
+                    chunk.occupancy -= 1;
+                } else {
+                    chunk.occupancy += 1;
+                }
+            }
+        }
 
         chunk
     }
@@ -37,21 +49,20 @@ impl ChunkNaive {
 
     /// Gets the block at the given position. This is a helper function for the `get` method
     #[must_use]
-    pub fn get_naive(&self, pos: VoxelPos) -> AtChunk {
-        AtChunk::new(pos, self.data[naive(pos) as usize])
+    pub fn get_naive(&self, pos: VoxelPos) -> BatVoxel {
+        BatVoxel::new(pos, self.data[naive(pos) as usize])
     }
 
     /// Gets the blocks at the given positions in bulk. This is a helper function for the `get_bulk` method
-    #[must_use]
-    pub fn get_bulk_naive(&self, poss: &[VoxelPos]) -> Box<[AtChunk]> {
-        poss.iter()
-            .map(|&pos| AtChunk::new(pos, self.data[naive(pos) as usize]))
-            .collect()
+    pub fn get_bulk_naive(&self, poss: &[VoxelPos], output: &mut [BatVoxel]) {
+        for (&pos, out) in poss.iter().zip(output.iter_mut()) {
+            *out = BatVoxel::new(pos, self.data[naive(pos) as usize]);
+        }
     }
 
     /// Sets the block at the given position. This is a helper function for the `set` method
     #[must_use]
-    pub fn set_naive(&mut self, block: AtChunk) -> AtChunk {
+    pub fn set_naive(&mut self, block: BatVoxel) -> BatVoxel {
         let pos = block.pos();
         let new_id = block.id();
 
@@ -65,31 +76,33 @@ impl ChunkNaive {
             }
         }
 
-        AtChunk::new(pos, old_id)
+        BatVoxel::new(pos, old_id)
     }
 
     /// Sets the blocks at the given positions in bulk. This is a helper function for the `set_bulk` method
     #[must_use]
-    pub fn set_bulk_naive(&mut self, blocks: &[AtChunk]) -> Box<[AtChunk]> {
-        blocks
-            .iter()
-            .map(|vox| {
-                let pos = vox.pos();
-                let new_id = vox.id();
+    pub fn set_bulk_naive(&mut self, blocks: &[BatVoxel], output: &mut [BatVoxel]) -> bool {
+        let mut changed = false;
 
-                let old_id = std::mem::replace(&mut self.data[naive(pos) as usize], new_id);
+        for (&block, out) in blocks.iter().zip(output.iter_mut()) {
+            let new_block = block;
+            let pos = new_block.pos();
+            let new_id = new_block.id();
+            let old_id = std::mem::replace(&mut self.data[naive(pos) as usize], new_id);
 
-                if !old_id.is_equal(&new_id) {
-                    if new_id.is_air() {
-                        self.occupancy -= 1;
-                    } else {
-                        self.occupancy += 1;
-                    }
+            if !old_id.is_equal(&new_id) {
+                changed = true;
+                if new_id.is_air() {
+                    self.occupancy -= 1;
+                } else {
+                    self.occupancy += 1;
                 }
+            }
 
-                AtChunk::new(pos, old_id)
-            })
-            .collect()
+            *out = BatVoxel::new(pos, old_id);
+        }
+
+        changed
     }
 
     pub const fn is_empty(&self) -> bool {

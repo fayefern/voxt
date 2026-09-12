@@ -17,7 +17,7 @@ pub const WORLD_HEIGHT_LOG: usize = 10;
 pub const WORLD_HEIGHT: usize = 1 << WORLD_HEIGHT_LOG;
 
 /// The log2 of the size of the Chunk Grid.
-pub const CHUNK_SIZE_LOG: usize = 6;
+pub const CHUNK_SIZE_LOG: usize = 5;
 
 /// The size of the Chunk Grid.
 pub const CHUNK_SIZE: usize = 1 << CHUNK_SIZE_LOG;

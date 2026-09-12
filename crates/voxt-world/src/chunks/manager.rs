@@ -46,7 +46,7 @@ impl ChunkManager {
 
 #[cfg(test)]
 mod tests {
-    use voxt_core::prelude::{AtChunk, BlockId, ChunkPos, Pos, VoxelPos};
+    use voxt_core::prelude::{BatVoxel, BlockId, ChunkPos, Pos, VoxelPos};
 
     use crate::chunks::{Chunk, ChunkManager};
 
@@ -71,7 +71,7 @@ mod tests {
         assert!(manager.insert_chunk(chunk).is_none());
 
         let stored = manager.get_chunk(&pos).unwrap();
-        assert_eq!(stored.chunk_pos(), pos);
+        assert_eq!(stored.chunk_pos().clone(), pos);
     }
 
     #[test]
@@ -90,7 +90,7 @@ mod tests {
         manager.insert_chunk(Chunk::new(pos));
 
         let chunk = manager.get_chunk_mut(&pos).unwrap();
-        let _ = chunk.set(AtChunk::new(VoxelPos::from_raw(0, 0, 0), BlockId::new(1)));
+        let _ = chunk.set(BatVoxel::new(VoxelPos::from_raw(0, 0, 0), BlockId::new(1)));
 
         assert_eq!(
             manager
@@ -123,7 +123,7 @@ mod tests {
 
         let removed = manager.remove_chunk(&pos).unwrap();
 
-        assert_eq!(removed.chunk_pos(), pos);
+        assert_eq!(removed.chunk_pos().clone(), pos);
         assert!(!manager.contains_chunk(&pos));
         assert!(manager.is_empty());
     }
@@ -144,13 +144,13 @@ mod tests {
         let first = Chunk::new(pos);
 
         let mut second = Chunk::new(pos);
-        let _ = second.set(AtChunk::new(VoxelPos::from_raw(0, 0, 0), BlockId::new(42)));
+        let _ = second.set(BatVoxel::new(VoxelPos::from_raw(0, 0, 0), BlockId::new(42)));
 
         assert!(manager.insert_chunk(first).is_none());
 
         let replaced = manager.insert_chunk(second).unwrap();
 
-        assert_eq!(replaced.chunk_pos(), pos);
+        assert_eq!(replaced.chunk_pos().clone(), pos);
         assert_eq!(replaced.version().as_u64(), 0);
 
         assert_eq!(manager.num_chunks(), 1);

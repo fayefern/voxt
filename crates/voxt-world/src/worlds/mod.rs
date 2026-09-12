@@ -1,5 +1,5 @@
 mod command;
 mod world;
 
-pub use command::WorldCommand;
+pub use command::{WorldRequest, WorldResponse};
 pub use world::World;
