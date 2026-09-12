@@ -1,5 +1,6 @@
 mod chunk;
-mod voxel;
+mod manager;
+mod naive_chunk;
 
 pub use chunk::Chunk;
-pub use voxel::Voxel;
+pub use manager::ChunkManager;

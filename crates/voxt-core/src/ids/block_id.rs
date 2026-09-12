@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 /// Represents the unique identifier of a Block. This is used to identify a Block's type in the `BlockRegistry`.
 ///
 /// Internally stores an u16. This makes the maximum number of Block types 65,536. `BlockId` 0 is reserved for "Air".
@@ -25,6 +27,12 @@ impl BlockId {
 
     pub const fn is_equal(&self, other: &Self) -> bool {
         self.0 == other.0
+    }
+}
+
+impl Display for BlockId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "id({})", self.0)
     }
 }
 
