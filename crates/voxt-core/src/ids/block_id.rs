@@ -25,6 +25,7 @@ impl BlockId {
         self.0 == 0
     }
 
+    #[must_use]
     pub const fn is_equal(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -49,7 +50,7 @@ mod tests {
     #[test]
     fn zero_is_air() {
         assert!(BlockId::new(0).is_air());
-        assert!(!BlockId::new(1).is_air())
+        assert!(!BlockId::new(1).is_air());
     }
 
     #[test]

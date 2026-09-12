@@ -28,9 +28,9 @@ impl VoxelPos {
     #[must_use]
     pub fn into_world_pos(&self, chunk_pos: &ChunkPos) -> WorldPos {
         Pos::from_raw(
-            self.x as i32 + (chunk_pos.x() as i32 * CHUNK_SIZE as i32),
-            self.y as i32 + (chunk_pos.y() as i32 * CHUNK_SIZE as i32),
-            self.z as i32 + (chunk_pos.z() as i32 * CHUNK_SIZE as i32),
+            i32::from(self.x) + (i32::from(chunk_pos.x()) * CHUNK_SIZE as i32),
+            i32::from(self.y) + (i32::from(chunk_pos.y()) * CHUNK_SIZE as i32),
+            i32::from(self.z) + (i32::from(chunk_pos.z()) * CHUNK_SIZE as i32),
         )
     }
 }

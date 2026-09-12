@@ -3,16 +3,19 @@ pub struct FlatIdx(u16);
 
 impl FlatIdx {
     #[inline]
+    #[must_use]
     pub const fn idx(&self) -> u16 {
         self.0
     }
 
     #[inline]
+    #[must_use]
     pub const fn encode(x: u8, y: u8, z: u8) -> Self {
         Self(x as u16 + y as u16 * 32 + z as u16 * 1024)
     }
 
     #[inline]
+    #[must_use]
     pub const fn decode(&self) -> (u8, u8, u8) {
         (
             (self.0 & 0x1F) as u8,
@@ -27,6 +30,7 @@ pub struct MortonIdx(u16);
 
 impl MortonIdx {
     #[inline]
+    #[must_use]
     pub const fn idx(&self) -> u16 {
         self.0
     }
@@ -41,6 +45,7 @@ impl MortonIdx {
     }
 
     #[inline]
+    #[must_use]
     pub const fn encode(x: u8, y: u8, z: u8) -> Self {
         let mx = Self::spread(x as u32);
         let my = Self::spread(y as u32);
@@ -59,6 +64,7 @@ impl MortonIdx {
     }
 
     #[inline]
+    #[must_use]
     pub const fn decode(&self) -> (u8, u8, u8) {
         let morton = self.0 as u32;
 
@@ -75,11 +81,13 @@ pub struct HilbertLinearIdx(u16);
 
 impl HilbertLinearIdx {
     #[inline]
+    #[must_use]
     pub const fn idx(&self) -> u16 {
         self.0
     }
 
     #[inline]
+    #[must_use]
     pub const fn encode(x: u8, y: u8, z: u8) -> Self {
         let mut ux = x;
         let mut uz = z;
@@ -108,6 +116,7 @@ impl HilbertLinearIdx {
     }
 
     #[inline]
+    #[must_use]
     pub const fn decode(&self) -> (u8, u8, u8) {
         let y = (self.0 & 31) as u8;
 
@@ -147,11 +156,13 @@ pub struct HilbertIdx(u16);
 
 impl HilbertIdx {
     #[inline]
+    #[must_use]
     pub const fn idx(&self) -> u16 {
         self.0
     }
 
     #[inline]
+    #[must_use]
     pub const fn encode(x: u8, z: u8) -> Self {
         let mut ux = x;
         let mut uz = z;
@@ -180,6 +191,7 @@ impl HilbertIdx {
     }
 
     #[inline]
+    #[must_use]
     pub const fn decode(&self) -> (u8, u8) {
         let mut idx = self.0;
         let mut ux = 0;
@@ -267,7 +279,7 @@ mod tests {
             let h = HilbertLinearIdx::encode(x, y, z);
             let (nx, ny, nz) = h.decode();
 
-            assert_eq!((x, y, z), (nx, ny, nz))
+            assert_eq!((x, y, z), (nx, ny, nz));
         }
     }
 
@@ -279,7 +291,7 @@ mod tests {
             let h = HilbertIdx::encode(x, z);
             let (nx, nz) = h.decode();
 
-            assert_eq!((x, z), (nx, nz))
+            assert_eq!((x, z), (nx, nz));
         }
     }
 }

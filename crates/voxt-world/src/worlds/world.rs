@@ -13,7 +13,14 @@ pub struct World {
     tick: u64,
 }
 
+impl Default for World {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl World {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             chunks: ChunkManager::new(),
@@ -21,6 +28,7 @@ impl World {
         }
     }
 
+    #[must_use]
     pub fn tick(&self) -> u64 {
         self.tick
     }
@@ -29,6 +37,7 @@ impl World {
         self.tick += 1;
     }
 
+    #[must_use]
     pub fn chunks(&self) -> &ChunkManager {
         &self.chunks
     }
@@ -149,7 +158,7 @@ impl World {
             let chunk = self.chunks.get_chunk_mut(&chunk_pos).expect("chunk exists");
 
             let voxel_bats: Vec<_> = group.iter().map(|&i| (&bats[i]).into()).collect();
-            let mut buffer = voxel_bats.to_vec();
+            let mut buffer = voxel_bats.clone();
 
             chunk.set_bulk(&voxel_bats, &mut buffer);
 

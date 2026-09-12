@@ -34,5 +34,5 @@ pub const WORLD_HEIGHT_IN_CHUNKS_LOG: usize = WORLD_HEIGHT_LOG - CHUNK_SIZE_LOG;
 /// The height of the World Grid counted in Chunks.
 pub const WORLD_HEIGHT_IN_CHUNKS: usize = WORLD_HEIGHT / CHUNK_SIZE;
 
-/// BlockId of value 0 is reserved for "Air". One should never need to use BlockId::new(0) directly. Use this instead
+/// `BlockId` of value 0 is reserved for "Air". One should never need to use `BlockId::new(0)` directly. Use this instead
 pub const AIR: BlockId = BlockId::new(0);

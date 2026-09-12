@@ -54,9 +54,9 @@ impl WorldPos {
     #[must_use]
     pub fn from_chunk_and_voxel_pos(chunk_pos: &ChunkPos, voxel_pos: &VoxelPos) -> Self {
         Self {
-            x: voxel_pos.x() as i32 + chunk_pos.x() as i32 * CHUNK_SIZE as i32,
-            y: voxel_pos.y() as i32 + chunk_pos.y() as i32 * CHUNK_SIZE as i32,
-            z: voxel_pos.z() as i32 + chunk_pos.z() as i32 * CHUNK_SIZE as i32,
+            x: i32::from(voxel_pos.x()) + i32::from(chunk_pos.x()) * CHUNK_SIZE as i32,
+            y: i32::from(voxel_pos.y()) + i32::from(chunk_pos.y()) * CHUNK_SIZE as i32,
+            z: i32::from(voxel_pos.z()) + i32::from(chunk_pos.z()) * CHUNK_SIZE as i32,
         }
     }
 }

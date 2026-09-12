@@ -8,13 +8,21 @@ pub struct ChunkManager {
     map: HashMap<ChunkPos, Chunk>,
 }
 
+impl Default for ChunkManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChunkManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             map: HashMap::new(),
         }
     }
 
+    #[must_use]
     pub fn get_chunk(&self, pos: &ChunkPos) -> Option<&Chunk> {
         self.map.get(pos)
     }
@@ -31,14 +39,17 @@ impl ChunkManager {
         self.map.remove(pos)
     }
 
+    #[must_use]
     pub fn contains_chunk(&self, pos: &ChunkPos) -> bool {
         self.map.contains_key(pos)
     }
 
+    #[must_use]
     pub fn num_chunks(&self) -> usize {
         self.map.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }

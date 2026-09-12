@@ -4,7 +4,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use rand::RngExt;
 use voxt_core::prelude::{FlatIdx, HilbertIdx, HilbertLinearIdx, MortonIdx};
 
-const BATCH_SIZE: usize = 1000000;
+const BATCH_SIZE: usize = 1_000_000;
 
 fn generate_random_3xu5_batch() -> Vec<(u8, u8, u8)> {
     let mut rng = rand::rng();
@@ -42,39 +42,39 @@ fn bench_randomized_curves(c: &mut Criterion) {
 
     group.bench_function("Flat-3xi5", |b| {
         b.iter(|| {
-            for &(x, y, z) in dataset_3xu5.iter() {
+            for &(x, y, z) in &dataset_3xu5 {
                 let f = FlatIdx::encode(x, y, z);
                 let res = f.decode();
                 black_box(res);
             }
-        })
+        });
     });
     group.bench_function("Morton-3xi5", |b| {
         b.iter(|| {
-            for &(x, y, z) in dataset_3xu5.iter() {
+            for &(x, y, z) in &dataset_3xu5 {
                 let m = MortonIdx::encode(x, y, z);
                 let res = m.decode();
                 black_box(res);
             }
-        })
+        });
     });
     group.bench_function("Hilbert-Linear-3xi5", |b| {
         b.iter(|| {
-            for &(x, y, z) in dataset_3xu5.iter() {
+            for &(x, y, z) in &dataset_3xu5 {
                 let h = HilbertLinearIdx::encode(x, y, z);
                 let res = h.decode();
                 black_box(res);
             }
-        })
+        });
     });
     group.bench_function("Hilbert-2xi8", |b| {
         b.iter(|| {
-            for &(x, _, z) in dataset_3xu8.iter() {
+            for &(x, _, z) in &dataset_3xu8 {
                 let h = HilbertIdx::encode(x, z);
                 let res = h.decode();
                 black_box(res);
             }
-        })
+        });
     });
     group.finish();
 }

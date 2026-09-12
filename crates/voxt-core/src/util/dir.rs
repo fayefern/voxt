@@ -80,6 +80,7 @@ impl Dir {
     /// Receives a tuple of the direction's x, y, and z unitary components.
     ///
     /// Returns the corresponding direction if the tuple is a valid unit.
+    #[must_use]
     pub const fn from_off_tuple((x, y, z): (i8, i8, i8)) -> Option<Self> {
         match (x, y, z) {
             (0, 1, 0) => Some(Self::Up),
@@ -108,6 +109,7 @@ impl Dir {
     /// Receives an array of the direction's x, y, and z unitary components.
     ///
     /// Returns the corresponding direction if the tuple is a valid unit.
+    #[must_use]
     pub const fn from_off_array([x, y, z]: [i8; 3]) -> Option<Self> {
         match (x, y, z) {
             (0, 1, 0) => Some(Self::Up),

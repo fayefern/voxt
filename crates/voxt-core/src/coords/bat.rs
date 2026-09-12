@@ -78,6 +78,7 @@ impl<P: Pos> BlockAt<P> {
 }
 
 impl BlockAt<ChunkPos> {
+    #[must_use]
     pub fn into_world_bat(&self, voxel_pos: &VoxelPos) -> BlockAt<WorldPos> {
         BlockAt {
             pos: self.pos.into_world_pos(voxel_pos),
@@ -87,6 +88,7 @@ impl BlockAt<ChunkPos> {
 }
 
 impl BlockAt<VoxelPos> {
+    #[must_use]
     pub fn into_world_bat(&self, chunk_pos: &ChunkPos) -> BlockAt<WorldPos> {
         BlockAt {
             pos: self.pos.into_world_pos(chunk_pos),

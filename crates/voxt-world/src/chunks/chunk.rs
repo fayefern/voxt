@@ -47,6 +47,7 @@ impl Chunk {
     }
 
     /// Returns the number of non-air voxels in the chunk.
+    #[must_use]
     pub const fn non_air(&self) -> u16 {
         self.data.non_air_helper()
     }
@@ -172,12 +173,12 @@ impl ChunkData {
 
                 let old_block = BatVoxel::new(pos, AIR);
 
-                if !new_id.is_air() {
+                if new_id.is_air() {
+                    (old_block, false)
+                } else {
                     *self = Self::General(ChunkNaive::new(&[BatVoxel::new(pos, new_id)]));
 
                     (old_block, true)
-                } else {
-                    (old_block, false)
                 }
             }
             Self::General(c) => {
@@ -188,10 +189,10 @@ impl ChunkData {
                     *self = Self::Empty;
                 }
 
-                if !new_id.is_equal(&old_block.id()) {
-                    (old_block, true)
-                } else {
+                if new_id.is_equal(&old_block.id()) {
                     (old_block, false)
+                } else {
+                    (old_block, true)
                 }
             }
         }

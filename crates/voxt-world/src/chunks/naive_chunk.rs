@@ -26,7 +26,7 @@ impl ChunkNaive {
             occupancy: 0,
         };
 
-        for &new_block in blocks.iter() {
+        for &new_block in blocks {
             let pos = new_block.pos();
             let new_id = new_block.id();
             let old_id = std::mem::replace(&mut chunk.data[naive(pos) as usize], new_id);
@@ -70,9 +70,9 @@ impl ChunkNaive {
 
         if !old_id.is_equal(&new_id) {
             if new_id.is_air() {
-                self.occupancy -= 1
+                self.occupancy -= 1;
             } else {
-                self.occupancy += 1
+                self.occupancy += 1;
             }
         }
 
