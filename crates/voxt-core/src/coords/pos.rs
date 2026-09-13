@@ -128,7 +128,7 @@ pub trait Pos: Debug + Clone + Copy + PartialEq + Eq + Display {
         let dy: isize = self.y().as_() - rhs.y().as_();
         let dz: isize = self.z().as_() - rhs.z().as_();
 
-        (dx * dx) as usize + (dy * dy) as usize + (dz * dz) as usize
+        (dx * dx + dy * dy + dz * dz) as usize
     }
 
     fn dist_manhattan(&self, rhs: &Self) -> usize {

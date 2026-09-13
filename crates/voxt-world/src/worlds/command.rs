@@ -1,11 +1,33 @@
 use voxt_core::prelude::{BatWorld, WorldPos};
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum WorldRequest<'a> {
-    GetBlock(WorldPos),
-    GetBlockBulk(&'a [WorldPos]),
+pub enum WorldCommand {
+    Request(WorldRequest),
+    Query(WorldQuery),
+}
+
+impl From<WorldRequest> for WorldCommand {
+    fn from(value: WorldRequest) -> Self {
+        Self::Request(value)
+    }
+}
+
+impl From<WorldQuery> for WorldCommand {
+    fn from(value: WorldQuery) -> Self {
+        Self::Query(value)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum WorldRequest {
     SetBlock(BatWorld),
-    SetBlockBulk(&'a [BatWorld]),
+    SetBlockBulk(Box<[BatWorld]>),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum WorldQuery {
+    GetBlock(WorldPos),
+    GetBlockBulk(Box<[WorldPos]>),
 }
 
 #[derive(Debug, PartialEq, Eq)]

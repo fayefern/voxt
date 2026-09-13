@@ -5,7 +5,7 @@ use voxt_core::prelude::{
 
 use crate::chunks::naive_chunk::ChunkNaive;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chunk {
     chunk_pos: ChunkPos,
     version: ChunkVersion,

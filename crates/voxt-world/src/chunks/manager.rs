@@ -1,57 +1,51 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use voxt_core::prelude::ChunkPos;
 
 use crate::chunks::Chunk;
 
 pub struct ChunkManager {
-    map: HashMap<ChunkPos, Chunk>,
-}
-
-impl Default for ChunkManager {
-    fn default() -> Self {
-        Self::new()
-    }
+    chunks: HashMap<ChunkPos, Chunk>,
 }
 
 impl ChunkManager {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            map: HashMap::new(),
+            chunks: HashMap::new(),
         }
     }
 
     #[must_use]
     pub fn get_chunk(&self, pos: &ChunkPos) -> Option<&Chunk> {
-        self.map.get(pos)
+        self.chunks.get(pos)
     }
 
     pub fn get_chunk_mut(&mut self, pos: &ChunkPos) -> Option<&mut Chunk> {
-        self.map.get_mut(pos)
+        self.chunks.get_mut(pos)
     }
 
     pub fn insert_chunk(&mut self, chunk: Chunk) -> Option<Chunk> {
-        self.map.insert(chunk.chunk_pos(), chunk)
+        self.chunks.insert(chunk.chunk_pos(), chunk)
     }
 
     pub fn remove_chunk(&mut self, pos: &ChunkPos) -> Option<Chunk> {
-        self.map.remove(pos)
+        self.chunks.remove(pos)
     }
 
     #[must_use]
     pub fn contains_chunk(&self, pos: &ChunkPos) -> bool {
-        self.map.contains_key(pos)
+        self.chunks.contains_key(pos)
     }
 
     #[must_use]
     pub fn num_chunks(&self) -> usize {
-        self.map.len()
+        self.chunks.len()
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
+        self.chunks.is_empty()
     }
 }
 

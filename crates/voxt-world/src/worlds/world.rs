@@ -1,16 +1,23 @@
+use std::collections::VecDeque;
+
 use voxt_core::prelude::{BatVoxel, BatWorld, ChunkPos, WorldPos, constants::AIR};
 
 use crate::{
-    chunks::ChunkManager,
+    chunks::{ChunkManager, ChunkScheduler},
     worlds::{
         WorldRequest, WorldResponse,
-        command::{FailureReason, InvalidReason},
+        command::{FailureReason, InvalidReason, WorldCommand, WorldQuery},
     },
 };
 
 pub struct World {
     chunks: ChunkManager,
-    tick: u64,
+    schedule: ChunkScheduler,
+
+    tick: Tick,
+
+    commands: VecDeque<WorldCommand>,
+    responses: VecDeque<WorldResponse>,
 }
 
 impl Default for World {
@@ -24,17 +31,27 @@ impl World {
     pub fn new() -> Self {
         Self {
             chunks: ChunkManager::new(),
-            tick: 0,
+            schedule: ChunkScheduler::new(Tick::new(100)),
+
+            tick: Tick::default(),
+            commands: VecDeque::new(),
+            responses: VecDeque::new(),
         }
     }
 
     #[must_use]
-    pub fn tick(&self) -> u64 {
+    pub fn tick(&self) -> Tick {
         self.tick
     }
 
     pub fn advance(&mut self) {
-        self.tick += 1;
+        self.tick.increase();
+
+        self.process_commands();
+
+        self.simulate();
+
+        self.schedule();
     }
 
     #[must_use]
@@ -46,27 +63,46 @@ impl World {
         &mut self.chunks
     }
 
-    pub fn apply(&mut self, request: WorldRequest) -> WorldResponse {
-        match request {
-            WorldRequest::GetBlock(pos) => match self.get_block(pos) {
+    pub fn submit(&mut self, command: impl Into<WorldCommand>) {
+        self.commands.push_back(command.into());
+    }
+
+    pub fn process_commands(&mut self) {
+        const MAX_POPS: usize = 16;
+
+        let count = self.commands.len().min(MAX_POPS);
+
+        for _ in 0..count {
+            if let Some(c) = self.commands.pop_front() {
+                let res = self.apply_commands(c);
+
+                self.responses.push_back(res);
+            }
+        }
+    }
+
+    pub fn apply_commands(&mut self, command: impl Into<WorldCommand>) -> WorldResponse {
+        match command.into() {
+            WorldCommand::Query(q) => self.apply_query(q),
+            WorldCommand::Request(r) => self.apply_request(r),
+        }
+    }
+
+    fn apply_query(&self, query: WorldQuery) -> WorldResponse {
+        match query {
+            WorldQuery::GetBlock(pos) => match self.get_block(pos) {
                 Some(bat) => WorldResponse::ReturnBlock(bat),
                 None => WorldResponse::Failure {
                     reason: FailureReason::ChunkNotInMemory,
                 },
             },
-            WorldRequest::SetBlock(bat) => match self.set_block(bat) {
-                Some(bat) => WorldResponse::ReturnBlock(bat),
-                None => WorldResponse::Failure {
-                    reason: FailureReason::ChunkNotInMemory,
-                },
-            },
-            WorldRequest::GetBlockBulk(poss) => {
+            WorldQuery::GetBlockBulk(poss) => {
                 if poss.is_empty() {
                     WorldResponse::Invalid {
                         reason: InvalidReason::EmptyBlockBulkRequest,
                     }
                 } else {
-                    match self.get_block_bulk(poss) {
+                    match self.get_block_bulk(&poss) {
                         Some(bats) => WorldResponse::ReturnBlockBulk(bats),
                         None => WorldResponse::Failure {
                             reason: FailureReason::ChunkNotInMemory,
@@ -74,13 +110,24 @@ impl World {
                     }
                 }
             }
+        }
+    }
+
+    fn apply_request(&mut self, request: WorldRequest) -> WorldResponse {
+        match request {
+            WorldRequest::SetBlock(bat) => match self.set_block(bat) {
+                Some(bat) => WorldResponse::ReturnBlock(bat),
+                None => WorldResponse::Failure {
+                    reason: FailureReason::ChunkNotInMemory,
+                },
+            },
             WorldRequest::SetBlockBulk(bats) => {
                 if bats.is_empty() {
                     WorldResponse::Invalid {
                         reason: InvalidReason::EmptyBlockBulkRequest,
                     }
                 } else {
-                    match self.set_block_bulk(bats) {
+                    match self.set_block_bulk(&bats) {
                         Some(bats) => WorldResponse::ReturnBlockBulk(bats),
                         None => WorldResponse::Failure {
                             reason: FailureReason::ChunkNotInMemory,
@@ -108,7 +155,7 @@ impl World {
             .map(|chunk| chunk.set(bat_voxel).into_world_bat(&chunk_pos))
     }
 
-    fn get_block_bulk(&mut self, poss: &[WorldPos]) -> Option<Box<[BatWorld]>> {
+    fn get_block_bulk(&self, poss: &[WorldPos]) -> Option<Box<[BatWorld]>> {
         if !poss.iter().all(|p| self.chunks.contains_chunk(&p.into())) {
             return None;
         }
@@ -169,17 +216,48 @@ impl World {
 
         Some(answ.into_iter().map(|b| b.expect("slots filled")).collect())
     }
+
+    fn simulate(&mut self) {}
+
+    fn schedule(&mut self) {}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct Tick(u64);
+
+impl Tick {
+    pub const fn new(tick: u64) -> Self {
+        Self(tick)
+    }
+
+    pub const fn tick(&self) -> u64 {
+        self.0
+    }
+
+    pub const fn increase(&mut self) {
+        self.0 += 1;
+    }
+
+    pub const fn ticks_since(&self, other: &Self) -> Self {
+        assert!(self.0 >= other.0, "negative tick");
+
+        Self(self.0 - other.0)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
         prelude::{Chunk, World},
-        worlds::{WorldRequest, WorldResponse, command::FailureReason},
+        worlds::{
+            WorldRequest, WorldResponse,
+            command::{FailureReason, WorldQuery},
+            world::Tick,
+        },
     };
     use voxt_core::{
         bat,
-        prelude::{BatVoxel, BlockId, ChunkPos, Pos, VoxelPos, WorldPos},
+        prelude::{BatVoxel, BatWorld, BlockId, ChunkPos, Pos, VoxelPos, WorldPos},
     };
 
     #[test]
@@ -250,9 +328,9 @@ mod tests {
         world.chunks_mut().insert_chunk(Chunk::new(chunk_pos0));
         world.chunks_mut().insert_chunk(Chunk::new(chunk_pos1));
 
-        let res0 = world.apply(WorldRequest::GetBlock(input[0]));
-        let res1 = world.apply(WorldRequest::GetBlock(input[1]));
-        let res2 = world.apply(WorldRequest::GetBlock(input[2]));
+        let res0 = world.apply_commands(WorldQuery::GetBlock(input[0]));
+        let res1 = world.apply_commands(WorldQuery::GetBlock(input[1]));
+        let res2 = world.apply_commands(WorldQuery::GetBlock(input[2]));
 
         assert_eq!(WorldResponse::ReturnBlock(expected[0]), res0);
         assert_eq!(WorldResponse::ReturnBlock(expected[1]), res1);
@@ -284,9 +362,9 @@ mod tests {
         world.chunks_mut().insert_chunk(Chunk::new(chunk_pos0));
         world.chunks_mut().insert_chunk(Chunk::new(chunk_pos1));
 
-        let res0 = world.apply(WorldRequest::SetBlock(input[0]));
-        let res1 = world.apply(WorldRequest::SetBlock(input[1]));
-        let res2 = world.apply(WorldRequest::SetBlock(input[2]));
+        let res0 = world.apply_commands(WorldRequest::SetBlock(input[0]));
+        let res1 = world.apply_commands(WorldRequest::SetBlock(input[1]));
+        let res2 = world.apply_commands(WorldRequest::SetBlock(input[2]));
 
         assert_eq!(WorldResponse::ReturnBlock(expected[0]), res0);
         assert_eq!(WorldResponse::ReturnBlock(expected[1]), res1);
@@ -311,21 +389,24 @@ mod tests {
             7,7,7 => 17,
             8,8,8 => 18
         );
-        let input0 = [
+        let input0 = vec![
             WorldPos::from_raw(0, 0, 0),
             WorldPos::from_raw(1, 1, 1),
             WorldPos::from_raw(2, 2, 2),
-        ];
-        let input1 = [
+        ]
+        .into_boxed_slice();
+        let input1 = vec![
             WorldPos::from_raw(3, 3, 3),
             WorldPos::from_raw(4, 4, 4),
             WorldPos::from_raw(5, 5, 5),
-        ];
-        let input2 = [
+        ]
+        .into_boxed_slice();
+        let input2 = vec![
             WorldPos::from_raw(32, 32, 32),
             WorldPos::from_raw(33, 33, 33),
             WorldPos::from_raw(34, 34, 34),
-        ];
+        ]
+        .into_boxed_slice();
         let expected0 = bat!(
             Wd 0,0,0 => 10,
             1,1,1 => 11,
@@ -348,9 +429,9 @@ mod tests {
             .chunks_mut()
             .insert_chunk(Chunk::new_with(chunk_pos0, start0));
 
-        let res0 = world.apply(WorldRequest::GetBlockBulk(&input0));
-        let res1 = world.apply(WorldRequest::GetBlockBulk(&input1));
-        let res2 = world.apply(WorldRequest::GetBlockBulk(&input2));
+        let res0 = world.apply_commands(WorldQuery::GetBlockBulk(input0));
+        let res1 = world.apply_commands(WorldQuery::GetBlockBulk(input1));
+        let res2 = world.apply_commands(WorldQuery::GetBlockBulk(input2));
 
         assert_eq!(WorldResponse::ReturnBlockBulk(expected0), res0);
         assert_eq!(WorldResponse::ReturnBlockBulk(expected1), res1);
@@ -380,18 +461,25 @@ mod tests {
             1,1,1 => 1,
             2,2,2 => 2,
             3,3,3 => 3
-        );
+        )
+        .to_vec()
+        .into_boxed_slice();
         let input1 = bat!(
             Wd 4,4,4 => 4,
             5,5,5 => 5,
             6,6,6 => 6
-        );
+        )
+        .to_vec()
+        .into_boxed_slice();
         let input2 = bat!(
             Wd 7,7,7 => 7,
             8,8,8 => 8,
             99,99,99 => 9
-        );
-        let input3 = [WorldPos::from_raw(7, 7, 7), WorldPos::from_raw(8, 8, 8)];
+        )
+        .to_vec()
+        .into_boxed_slice();
+        let input3 =
+            vec![WorldPos::from_raw(7, 7, 7), WorldPos::from_raw(8, 8, 8)].into_boxed_slice();
         let expected0 = bat!(
             Wd 0,0,0 => 10,
             1,1,1 => 11,
@@ -421,9 +509,9 @@ mod tests {
             .chunks_mut()
             .insert_chunk(Chunk::new_with(chunk_pos, start));
 
-        let res0 = world.apply(WorldRequest::SetBlockBulk(input0));
-        let res1 = world.apply(WorldRequest::SetBlockBulk(input1));
-        let res2 = world.apply(WorldRequest::SetBlockBulk(input2));
+        let res0 = world.apply_commands(WorldRequest::SetBlockBulk(input0));
+        let res1 = world.apply_commands(WorldRequest::SetBlockBulk(input1));
+        let res2 = world.apply_commands(WorldRequest::SetBlockBulk(input2));
 
         assert_eq!(WorldResponse::ReturnBlockBulk(expected0), res0);
         assert_eq!(WorldResponse::ReturnBlockBulk(expected1), res1);
@@ -434,7 +522,7 @@ mod tests {
             res2
         );
 
-        let res3 = world.apply(WorldRequest::GetBlockBulk(&input3));
+        let res3 = world.apply_commands(WorldQuery::GetBlockBulk(input3));
         assert_eq!(WorldResponse::ReturnBlockBulk(expected2), res3);
     }
 
@@ -450,7 +538,9 @@ mod tests {
             50,6,6 => 6,
             70,7,7 => 7,
             70,7,7 => 8
-        );
+        )
+        .to_vec()
+        .into_boxed_slice();
         let expected = bat!(
             Wd 0,0,0 => 0,
             32,1,1 => 0,
@@ -478,8 +568,73 @@ mod tests {
             manager.insert_chunk(Chunk::new(chunk_pos2));
         }
 
-        let res = world.apply(WorldRequest::SetBlockBulk(input));
+        let res = world.apply_commands(WorldRequest::SetBlockBulk(input));
 
         assert_eq!(WorldResponse::ReturnBlockBulk(expected), res);
+    }
+
+    #[test]
+    fn tick_monotonic_and_independent() {
+        let mut world = World::new();
+
+        assert_eq!(Tick::default(), world.tick());
+
+        world.advance();
+        world.advance();
+        world.advance();
+
+        assert_eq!(Tick::new(3), world.tick());
+
+        world
+            .chunks_mut()
+            .insert_chunk(Chunk::new(ChunkPos::from_raw(0, 0, 0)));
+        let input = BatWorld::new(WorldPos::from_raw(0, 0, 0), BlockId::new(1));
+        let _ = world.apply_commands(WorldRequest::SetBlock(input));
+
+        assert_eq!(Tick::new(3), world.tick());
+    }
+
+    #[test]
+    fn responses_arrive_at_sent_order() {
+        let mut world = World::new();
+
+        world
+            .chunks_mut()
+            .insert_chunk(Chunk::new(ChunkPos::from_raw(0, 0, 0)));
+
+        let input = bat!(
+            Wd 0,0,0 => 1,
+            1,1,1 => 2,
+            2,2,2 => 3,
+            4,4,4 => 4,
+            4,4,4 => 5,
+            5,5,5 => 6,
+            6,6,6 => 7,
+            7,7,7 => 8
+        );
+        let expected: Vec<_> = bat!(
+            Wd 0,0,0 => 0,
+            1,1,1 => 0,
+            2,2,2 => 0,
+            4,4,4 => 0,
+            4,4,4 => 4,
+            5,5,5 => 0,
+            6,6,6 => 0,
+            7,7,7 => 0
+        )
+        .iter()
+        .map(|&b| WorldResponse::ReturnBlock(b))
+        .collect();
+
+        input
+            .iter()
+            .for_each(|&b| world.submit(WorldRequest::SetBlock(b)));
+
+        world.advance();
+
+        expected
+            .into_iter()
+            .zip(world.responses)
+            .for_each(|(e, r)| assert_eq!(e, r));
     }
 }
