@@ -1,5 +1,5 @@
 use voxt_core::prelude::{
-    BatVoxel, ChunkPos, ChunkVersion, VoxelPos,
+    BatVoxel, ChunkPos, Version, VoxelPos,
     constants::{AIR, CHUNK_SIZE},
 };
 
@@ -8,7 +8,7 @@ use crate::chunks::naive_chunk::ChunkNaive;
 #[derive(Debug, Clone)]
 pub struct Chunk {
     chunk_pos: ChunkPos,
-    version: ChunkVersion,
+    version: Version,
 
     data: ChunkData,
 }
@@ -28,7 +28,7 @@ impl Chunk {
     pub fn new(chunk_pos: ChunkPos) -> Self {
         Self {
             chunk_pos,
-            version: ChunkVersion::new(0),
+            version: Version::new(0, 0, 0),
             data: ChunkData::new(),
         }
     }
@@ -41,7 +41,7 @@ impl Chunk {
     pub fn new_with(chunk_pos: ChunkPos, blocks: &[BatVoxel]) -> Self {
         Self {
             chunk_pos,
-            version: ChunkVersion::new(0),
+            version: Version::new(0, 0, 0),
             data: ChunkData::new_with(blocks),
         }
     }
@@ -60,7 +60,7 @@ impl Chunk {
 
     /// Returns the chunk version, which increments once for each mutating operation.
     #[must_use]
-    pub const fn version(&self) -> ChunkVersion {
+    pub const fn version(&self) -> Version {
         self.version
     }
 
@@ -87,7 +87,7 @@ impl Chunk {
         let (res, changed) = self.data.set_helper(block);
 
         if changed {
-            self.version.increment();
+            self.version.inc_minor();
         }
 
         res
@@ -101,7 +101,7 @@ impl Chunk {
     /// chunk version increments at most once for the whole operation.
     pub fn set_bulk(&mut self, blocks: &[BatVoxel], output: &mut [BatVoxel]) {
         if !blocks.is_empty() && self.data.set_bulk_helper(blocks, output) {
-            self.version.increment();
+            self.version.inc_minor();
         }
     }
 }
@@ -113,8 +113,6 @@ impl Chunk {
 enum ChunkData {
     Empty,
     General(ChunkNaive),
-    //RLE?
-    //Palette?
 }
 
 impl ChunkData {
@@ -228,7 +226,7 @@ mod tests {
     use crate::prelude::Chunk;
     use voxt_core::{
         bat,
-        prelude::{BatVoxel, BlockId, ChunkPos, Pos, VoxelPos, constants::AIR},
+        prelude::{BatVoxel, BlockId, ChunkPos, Pos, Version, VoxelPos, constants::AIR},
     };
 
     fn output_for(blocks: &[BatVoxel]) -> Vec<BatVoxel> {
@@ -243,7 +241,7 @@ mod tests {
         let chunk = Chunk::new(ChunkPos::from_raw(0, 0, 0));
 
         assert_eq!(chunk.chunk_pos().clone(), ChunkPos::from_raw(0, 0, 0));
-        assert_eq!(chunk.version().as_u64(), 0);
+        assert_eq!(chunk.version(), Version::new(0, 0, 0));
     }
 
     #[test]
@@ -359,15 +357,15 @@ mod tests {
         let pos = VoxelPos::from_raw(1, 2, 3);
         let stone = BlockId::new(1);
 
-        assert_eq!(chunk.version().as_u64(), 0);
+        assert_eq!(chunk.version(), Version::new(0, 0, 0));
 
         let _ = chunk.set(BatVoxel::new(pos, stone));
 
-        assert_eq!(chunk.version().as_u64(), 1);
+        assert_eq!(chunk.version(), Version::new(0, 1, 0));
 
         let _ = chunk.set(BatVoxel::new(pos, BlockId::new(2)));
 
-        assert_eq!(chunk.version().as_u64(), 2);
+        assert_eq!(chunk.version(), Version::new(0, 2, 0));
     }
 
     #[test]
@@ -378,10 +376,10 @@ mod tests {
         let stone = BlockId::new(1);
 
         let _ = chunk.set(BatVoxel::new(pos, stone));
-        assert_eq!(chunk.version().as_u64(), 1);
+        assert_eq!(chunk.version(), Version::new(0, 1, 0));
 
         let _ = chunk.set(BatVoxel::new(pos, AIR));
-        assert_eq!(chunk.version().as_u64(), 2);
+        assert_eq!(chunk.version(), Version::new(0, 2, 0));
     }
 
     #[test]
@@ -629,7 +627,7 @@ mod tests {
         assert_eq!(output[0].id(), AIR);
         assert_eq!(output[1].id(), BlockId::new(1));
         assert_eq!(chunk.get(pos).id(), BlockId::new(2));
-        assert_eq!(chunk.version().as_u64(), 1);
+        assert_eq!(chunk.version(), Version::new(0, 1, 0));
     }
 
     #[test]
@@ -641,7 +639,7 @@ mod tests {
         chunk.set_bulk(&[], &mut output);
 
         assert_eq!(output, [BatVoxel::new(pos, BlockId::new(7))]);
-        assert_eq!(chunk.version().as_u64(), 0);
+        assert_eq!(chunk.version(), Version::new(0, 0, 0));
         assert_eq!(chunk.get(pos).id(), AIR);
     }
 
@@ -659,7 +657,7 @@ mod tests {
         let mut output = output_for(&voxels);
         chunk.set_bulk(&voxels, &mut output);
 
-        assert_eq!(chunk.version().as_u64(), 1);
+        assert_eq!(chunk.version(), Version::new(0, 1, 0));
     }
 
     #[test]
@@ -674,11 +672,11 @@ mod tests {
         let first = voxels.to_vec();
         let mut first_output = output_for(&first);
         chunk.set_bulk(&first, &mut first_output);
-        assert_eq!(chunk.version().as_u64(), 1);
+        assert_eq!(chunk.version(), Version::new(0, 1, 0));
 
         let second = voxels.to_vec();
         let mut second_output = output_for(&second);
         chunk.set_bulk(&second, &mut second_output);
-        assert_eq!(chunk.version().as_u64(), 1);
+        assert_eq!(chunk.version(), Version::new(0, 1, 0));
     }
 }

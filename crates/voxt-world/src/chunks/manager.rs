@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use voxt_core::prelude::ChunkPos;
 
@@ -51,7 +51,7 @@ impl ChunkManager {
 
 #[cfg(test)]
 mod tests {
-    use voxt_core::prelude::{BatVoxel, BlockId, ChunkPos, Pos, VoxelPos};
+    use voxt_core::prelude::{BatVoxel, BlockId, ChunkPos, Pos, Version, VoxelPos};
 
     use crate::chunks::{Chunk, ChunkManager};
 
@@ -156,7 +156,7 @@ mod tests {
         let replaced = manager.insert_chunk(second).unwrap();
 
         assert_eq!(replaced.chunk_pos().clone(), pos);
-        assert_eq!(replaced.version().as_u64(), 0);
+        assert_eq!(replaced.version(), Version::new(0, 0, 0));
 
         assert_eq!(manager.num_chunks(), 1);
         assert_eq!(

@@ -1,9 +1,13 @@
 use std::collections::VecDeque;
 
-use voxt_core::prelude::{BatVoxel, BatWorld, ChunkPos, WorldPos, constants::AIR};
+use flume::{Receiver, Sender};
+use voxt_core::prelude::{BatVoxel, BatWorld, ChunkPos, Pos, WorldPos, constants::AIR};
 
 use crate::{
-    chunks::{ChunkManager, ChunkScheduler},
+    chunks::{
+        ChunkDemandKind, ChunkManager, ChunkScheduler, ChunkSchedulerConfig, ChunkTask,
+        ChunkTaskResult,
+    },
     worlds::{
         WorldRequest, WorldResponse,
         command::{FailureReason, InvalidReason, WorldCommand, WorldQuery},
@@ -11,29 +15,32 @@ use crate::{
 };
 
 pub struct World {
+    tick: Tick,
     chunks: ChunkManager,
     schedule: ChunkScheduler,
 
-    tick: Tick,
+    task_tx: Sender<ChunkTask>,
+    result_rx: Receiver<ChunkTaskResult>,
 
     commands: VecDeque<WorldCommand>,
     responses: VecDeque<WorldResponse>,
 }
 
-impl Default for World {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl World {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(
+        schedule_config: ChunkSchedulerConfig,
+        task_tx: Sender<ChunkTask>,
+        result_rx: Receiver<ChunkTaskResult>,
+    ) -> Self {
         Self {
-            chunks: ChunkManager::new(),
-            schedule: ChunkScheduler::new(Tick::new(100)),
-
             tick: Tick::default(),
+            chunks: ChunkManager::new(),
+            schedule: ChunkScheduler::new(schedule_config),
+
+            task_tx,
+            result_rx,
+
             commands: VecDeque::new(),
             responses: VecDeque::new(),
         }
@@ -42,16 +49,6 @@ impl World {
     #[must_use]
     pub fn tick(&self) -> Tick {
         self.tick
-    }
-
-    pub fn advance(&mut self) {
-        self.tick.increase();
-
-        self.process_commands();
-
-        self.simulate();
-
-        self.schedule();
     }
 
     #[must_use]
@@ -63,8 +60,69 @@ impl World {
         &mut self.chunks
     }
 
+    pub fn schedule_mut(&mut self) -> &mut ChunkScheduler {
+        &mut self.schedule
+    }
+
+    pub fn advance(&mut self) {
+        self.tick.increase();
+
+        self.process_tasks();
+
+        self.process_commands();
+
+        self.simulate();
+
+        self.schedule_tasks();
+
+        self.schedule_commands();
+    }
+
     pub fn submit(&mut self, command: impl Into<WorldCommand>) {
         self.commands.push_back(command.into());
+    }
+
+    fn process_tasks(&mut self) {
+        while let Ok(result) = self.result_rx.try_recv() {
+            match result {
+                ChunkTaskResult::Loaded { key, chunk } => {
+                    if !self.schedule.merge(&key) {
+                        continue;
+                    }
+
+                    self.chunks.insert_chunk(chunk);
+
+                    self.schedule.add(
+                        ChunkDemandKind::Mesh,
+                        key.chunk_pos(),
+                        key.version(),
+                        self.tick,
+                    );
+                }
+                ChunkTaskResult::Meshed { key, mesh: _mesh } => {
+                    if !self.schedule.merge(&key) {
+                        continue;
+                    }
+                    let Some(_chunk) = self.chunks.get_chunk_mut(&key.chunk_pos()) else {
+                        continue;
+                    };
+                }
+                ChunkTaskResult::Saved { key } => {
+                    if !self.schedule.merge(&key) {
+                        continue;
+                    }
+                    let Some(_chunk) = self.chunks.get_chunk_mut(&key.chunk_pos()) else {
+                        continue;
+                    };
+                }
+                ChunkTaskResult::Unloaded { key } => {
+                    if !self.schedule.merge(&key) {
+                        continue;
+                    }
+                    self.chunks.remove_chunk(&key.chunk_pos());
+                }
+            }
+        }
     }
 
     pub fn process_commands(&mut self) {
@@ -219,7 +277,19 @@ impl World {
 
     fn simulate(&mut self) {}
 
-    fn schedule(&mut self) {}
+    fn schedule_tasks(&mut self) {
+        self.schedule
+            .commit(&self.chunks, &ChunkPos::from_raw(0, 0, 0), self.tick);
+
+        while let Some(task) = self.schedule.branch() {
+            if let Err(err) = self.task_tx.send(task) {
+                eprintln!("failed to dispatch chunk tasks to worker pool: {}", err);
+                break;
+            }
+        }
+    }
+
+    fn schedule_commands(&self) {}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -248,7 +318,9 @@ impl Tick {
 #[cfg(test)]
 mod tests {
     use crate::{
+        chunks::ChunkSchedulerConfig,
         prelude::{Chunk, World},
+        workers::spawn_worker_pool,
         worlds::{
             WorldRequest, WorldResponse,
             command::{FailureReason, WorldQuery},
@@ -260,9 +332,16 @@ mod tests {
         prelude::{BatVoxel, BatWorld, BlockId, ChunkPos, Pos, VoxelPos, WorldPos},
     };
 
+    fn wd() -> World {
+        let config = ChunkSchedulerConfig::new(Tick::new(10));
+        let (task_tx, result_rx) = spawn_worker_pool(None);
+
+        World::new(config, task_tx, result_rx)
+    }
+
     #[test]
     fn new_world_has_no_chunks() {
-        let world = World::new();
+        let world = wd();
 
         assert!(world.chunks().is_empty());
         assert_eq!(world.chunks().num_chunks(), 0);
@@ -270,7 +349,7 @@ mod tests {
 
     #[test]
     fn world_can_access_chunk_manager() {
-        let mut world = World::new();
+        let mut world = wd();
         let pos = ChunkPos::from_raw(1, 2, 3);
 
         world.chunks_mut().insert_chunk(Chunk::new(pos));
@@ -284,7 +363,7 @@ mod tests {
 
     #[test]
     fn world_can_mutate_chunk_manager() {
-        let mut world = World::new();
+        let mut world = wd();
         let chunk_pos = ChunkPos::from_raw(1, 2, 3);
         let voxel_pos = VoxelPos::from_raw(4, 5, 6);
         let block = BlockId::new(42);
@@ -321,7 +400,7 @@ mod tests {
             35,0,0 => 0,
         );
 
-        let mut world = World::new();
+        let mut world = wd();
         let chunk_pos0 = ChunkPos::from_raw(0, 0, 0);
         let chunk_pos1 = ChunkPos::from_raw(1, 0, 0);
 
@@ -355,7 +434,7 @@ mod tests {
             35,60,37 => 0,
         );
 
-        let mut world = World::new();
+        let mut world = wd();
         let chunk_pos0 = ChunkPos::from_raw(0, 0, 0);
         let chunk_pos1 = ChunkPos::from_raw(1, 1, 1);
 
@@ -422,7 +501,7 @@ mod tests {
         .to_vec()
         .into_boxed_slice();
 
-        let mut world = World::new();
+        let mut world = wd();
         let chunk_pos0 = ChunkPos::from_raw(0, 0, 0);
 
         world
@@ -502,7 +581,7 @@ mod tests {
         .to_vec()
         .into_boxed_slice();
 
-        let mut world = World::new();
+        let mut world = wd();
         let chunk_pos = ChunkPos::from_raw(0, 0, 0);
 
         world
@@ -555,7 +634,7 @@ mod tests {
         .to_vec()
         .into_boxed_slice();
 
-        let mut world = World::new();
+        let mut world = wd();
         let chunk_pos0 = ChunkPos::from_raw(0, 0, 0);
         let chunk_pos1 = ChunkPos::from_raw(1, 0, 0);
         let chunk_pos2 = ChunkPos::from_raw(2, 0, 0);
@@ -575,7 +654,7 @@ mod tests {
 
     #[test]
     fn tick_monotonic_and_independent() {
-        let mut world = World::new();
+        let mut world = wd();
 
         assert_eq!(Tick::default(), world.tick());
 
@@ -596,7 +675,7 @@ mod tests {
 
     #[test]
     fn responses_arrive_at_sent_order() {
-        let mut world = World::new();
+        let mut world = wd();
 
         world
             .chunks_mut()

@@ -16,7 +16,7 @@ pub mod prelude {
             BatVoxel, BatWorld, BlockAt, ChunkPos, FlatIdx, HilbertIdx, HilbertLinearIdx,
             MortonIdx, Pos, VoxelPos, WorldPos,
         },
-        ids::{BlockId, ChunkVersion},
+        ids::{BlockId, Version},
         util::Dir,
     };
 }
